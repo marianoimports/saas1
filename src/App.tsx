@@ -75,6 +75,14 @@ function MainApp() {
       checkAdminStatus(user).catch(() => {});
     }
   }, [user]);
+  
+  // Auto-redirect admin to admin panel
+  React.useEffect(() => {
+    if (isAdminFinal && user) {
+      setActiveView('admin');
+    }
+  }, [isAdminFinal, user]);
+  
   const [activeView, setActiveView] = React.useState<View>('dashboard');
   const [messages, setMessages] = React.useState<Message[]>([
     {
