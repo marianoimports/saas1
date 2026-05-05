@@ -1,11 +1,36 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
-import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
+import { getFirestore, doc, getDocFromServer, setDoc, serverTimestamp } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
+
+// Function to create/update user document in Firestore
+export const createUserDocument = async (user: any, additionalData: any = {}) => {
+  if (!user) return;
+  
+  const userRef = doc(db, 'users', user.uid);
+  const snapshot = await getDocFromServer(userRef);
+  
+  if (!snapshot.exists()) {
+    const { email, displayName } = user;
+    try {
+      await setDoc(userRef, {
+        uid: user.uid,
+        email,
+        displayName: displayName || '',
+        role: 'owner', // default role
+        isAdmin: false,
+        createdAt: serverTimestamp(),
+        ...additionalData
+      });
+    } catch (error) {
+      console.error('Error creating user document:', error);
+    }
+  }
+};
 
 export const loginWithEmail = (email: string, password: string) => 
   signInWithEmailAndPassword(auth, email, password);

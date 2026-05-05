@@ -1,5 +1,50 @@
 {
   "entities": {
+    "Shop": {
+      "title": "Shop",
+      "description": "A barbershop registered on the platform.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "ownerEmail": { "type": "string" },
+        "ownerName": { "type": "string" },
+        "plan": { "type": "string", "enum": ["free", "basic", "pro", "enterprise"] },
+        "status": { "type": "string", "enum": ["active", "inactive", "suspended", "trial"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "trialEndsAt": { "type": "string", "format": "date-time" },
+        "subscriptionEndsAt": { "type": "string", "format": "date-time" },
+        "monthlyRevenue": { "type": "number" },
+        "totalBarbers": { "type": "number" },
+        "totalAppointments": { "type": "number" },
+        "phone": { "type": "string" },
+        "address": { "type": "string" }
+      },
+      "required": ["id", "name", "ownerId", "plan", "status"]
+    },
+    "Plan": {
+      "title": "Plan",
+      "description": "Subscription plan definition.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "currency": { "type": "string" },
+        "interval": { "type": "string", "enum": ["monthly", "yearly"] },
+        "features": { "type": "array", "items": { "type": "string" } },
+        "maxBarbers": { "type": "number" },
+        "maxAppointments": { "type": "number" },
+        "maxProducts": { "type": "number" },
+        "hasAI": { "type": "boolean" },
+        "hasReports": { "type": "boolean" },
+        "hasInventory": { "type": "boolean" },
+        "isActive": { "type": "boolean" },
+        "trialDays": { "type": "number" }
+      },
+      "required": ["id", "name", "price", "features"]
+    },
     "User": {
       "title": "User",
       "description": "A shop owner or staff member.",
@@ -7,10 +52,11 @@
       "properties": {
         "uid": { "type": "string" },
         "email": { "type": "string" },
-        "role": { "type": "string", "enum": ["owner", "barber", "receptionist"] },
-        "shopId": { "type": "string" }
+        "role": { "type": "string", "enum": ["owner", "barber", "receptionist", "admin"] },
+        "shopId": { "type": "string" },
+        "isAdmin": { "type": "boolean" }
       },
-      "required": ["uid", "email", "role", "shopId"]
+      "required": ["uid", "email", "role"]
     },
     "Barber": {
       "title": "Barber",
@@ -71,6 +117,14 @@
     }
   },
   "firestore": {
+    "/shops": {
+      "schema": "Shop",
+      "description": "Global shops collection."
+    },
+    "/plans": {
+      "schema": "Plan",
+      "description": "Subscription plans available."
+    },
     "/shops/{shopId}/barbers": {
       "schema": "Barber",
       "description": "Barbers registered in a specific shop."

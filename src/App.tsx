@@ -26,14 +26,34 @@ import {
   LogOut,
   ShieldCheck,
   CreditCard,
-  Building2
+  Building2,
+  Trash2,
+  Edit,
+  Ban,
+  CheckCircle,
+  XCircle,
+  Crown,
+  Gift,
+  Zap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 import { chatWithAI } from './services/geminiService';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { 
+  subscribeToShops, 
+  subscribeToPlans, 
+  addShop, 
+  updateShop, 
+  addPlan, 
+  updatePlan,
+  getActiveShopsCount,
+  getTotalUsersCount,
+  getMRR,
+  getNewShopsLast30Days
+} from './services/dbService';
 
-type View = 'dashboard' | 'agenda' | 'barbers' | 'estoque' | 'financeiro' | 'ia' | 'admin';
+type View = 'dashboard' | 'agenda' | 'barbers' | 'estoque' | 'financeiro' | 'ia' | 'admin' | 'pricing' | 'setup';
 
 interface Message {
   role: 'ia' | 'user';
@@ -41,11 +61,17 @@ interface Message {
   time: string;
 }
 
-const ADMIN_EMAIL = "michaelmarianodasilva81@gmail.com";
-
 function MainApp() {
-  const { user, logout } = useAuth();
-  const isAdmin = user?.email === ADMIN_EMAIL;
+  const { user, logout, isAdmin, userData, checkAdminStatus } = useAuth();
+  
+  // SIMPLE: Force admin true for this specific email - nothing else matters
+  const isAdminFinal = user?.email === 'michaelmarianodasilva81@gmail.com' ? true : (isAdmin || false);
+  
+  React.useEffect(() => {
+    if (user?.email === 'michaelmarianodasilva81@gmail.com') {
+      checkAdminStatus(user).catch(() => {});
+    }
+  }, [user]);
   const [activeView, setActiveView] = React.useState<View>('dashboard');
   const [messages, setMessages] = React.useState<Message[]>([
     {
@@ -98,6 +124,7 @@ function MainApp() {
     { id: 'estoque', label: 'Estoque', icon: Package, badge: 2, badgeColor: 'bg-red-500' },
     { id: 'financeiro', label: 'Financeiro', icon: DollarSign },
     { id: 'ia', label: 'IA Assistente', icon: Bot },
+    { id: 'pricing', label: 'Planos', icon: CreditCard },
   ];
 
   return (
@@ -176,7 +203,7 @@ function MainApp() {
               </button>
             ))}
 
-            {isAdmin && (
+            {isAdminFinal ? (
               <button
                 onClick={() => setActiveView('admin')}
                 className={cn(
@@ -189,7 +216,25 @@ function MainApp() {
                 <ShieldCheck className="w-4 h-4" />
                 <span>Painel SaaS</span>
               </button>
-            )}
+            ) : user?.email === 'michaelmarianodasilva81@gmail.com' ? (
+              <button
+                onClick={async () => {
+                  try {
+                    const { setUserAsAdmin } = await import('./services/dbService');
+                    await setUserAsAdmin(user?.uid || '');
+                    await checkAdminStatus(user);
+                    window.location.reload();
+                  } catch (error) {
+                    console.error('Error setting admin:', error);
+                    alert('Erro ao tornar admin. Verifique o console.');
+                  }
+                }}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all relative group font-bold mt-4 text-red-500 border border-red-500/30 hover:bg-red-500/10 animate-pulse"
+              >
+                <ShieldCheck className="w-4 h-4" />
+                <span>Tornar Admin</span>
+              </button>
+            ) : null}
           </div>
 
           <div className="px-6 flex flex-col gap-2 mt-auto pb-6">
@@ -209,6 +254,7 @@ function MainApp() {
             {activeView === 'estoque' && <StockView key="estoque" onNavigate={setActiveView} />}
             {activeView === 'financeiro' && <FinanceiroView key="financeiro" />}
             {activeView === 'admin' && <AdminView key="admin" />}
+            {activeView === 'pricing' && <PricingView key="pricing" />}
             {activeView === 'ia' && (
               <IAAssistantView 
                 key="ia" 
@@ -316,14 +362,35 @@ function LoginScreen() {
 }
 
 function AppContent() {
-  const { user, loading } = useAuth();
+  const { user, loading, isAdmin, checkAdminStatus } = useAuth();
+  const [needsSetup, setNeedsSetup] = React.useState(false);
+  const [checkingSetup, setCheckingSetup] = React.useState(true);
 
-  if (loading) {
+  React.useEffect(() => {
+    const checkSetup = async () => {
+      if (user) {
+        await checkAdminStatus();
+        // Import dynamically to avoid circular dependency
+        const { checkIfAdminExists } = await import('./services/dbService');
+        const adminExists = await checkIfAdminExists();
+        console.log('Admin exists:', adminExists, 'isAdmin:', isAdmin, 'email:', user?.email);
+        setNeedsSetup(!adminExists);
+      }
+      setCheckingSetup(false);
+    };
+    checkSetup();
+  }, [user, checkAdminStatus]);
+
+  if (loading || checkingSetup) {
     return (
       <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-[#C9A84C] animate-spin" />
       </div>
     );
+  }
+
+  if (user && needsSetup && !isAdmin && user?.email !== 'michaelmarianodasilva81@gmail.com') {
+    return <SetupAdminView />;
   }
 
   return user ? <MainApp /> : <LoginScreen />;
@@ -806,11 +873,170 @@ function IAAssistantView({ messages, input, setInput, sendMessage, isTyping, cha
 }
 
 function AdminView() {
-  const stats = [
-    { label: 'Lojas Ativas', val: '42', icon: Building2, color: 'text-blue-500' },
-    { label: 'Assinaturas MRR', val: 'R$ 8.400', icon: CreditCard, color: 'text-green-500' },
-    { label: 'Usuários Totais', val: '156', icon: Users, color: 'text-purple-500' },
-    { label: 'Novas Lojas (30d)', val: '12', icon: TrendingUp, color: 'text-[#C9A84C]' },
+  const [shops, setShops] = React.useState<any[]>([]);
+  const [plans, setPlans] = React.useState<any[]>([]);
+  const [stats, setStats] = React.useState({
+    activeShops: 0,
+    mrr: 0,
+    totalUsers: 0,
+    newShops30d: 0
+  });
+  const [loading, setLoading] = React.useState(true);
+  const [activeTab, setActiveTab] = React.useState<'shops' | 'plans'>('shops');
+  const [showPlanModal, setShowPlanModal] = React.useState(false);
+  const [editingPlan, setEditingPlan] = React.useState<any>(null);
+  const [showSeedButton, setShowSeedButton] = React.useState(false);
+  const { user, checkAdminStatus } = useAuth();
+
+  React.useEffect(() => {
+    const unsubShops = subscribeToShops<any>((data) => {
+      setShops(data);
+      setLoading(false);
+    });
+
+    const unsubPlans = subscribeToPlans<any>((data) => {
+      setPlans(data);
+      setShowSeedButton(data.length === 0);
+    });
+
+    // Calculate stats
+    const calcStats = async () => {
+      const [activeShops, mrr, totalUsers, newShops30d] = await Promise.all([
+        getActiveShopsCount(),
+        getMRR(),
+        getTotalUsersCount(),
+        getNewShopsLast30Days()
+      ]);
+      setStats({ activeShops, mrr, totalUsers, newShops30d });
+    };
+    calcStats();
+
+    return () => {
+      unsubShops();
+      unsubPlans();
+    };
+  }, []);
+
+  const handleSeedDefaultPlans = async () => {
+    const defaultPlans = [
+      {
+        name: 'Grátis',
+        price: 0,
+        currency: 'BRL',
+        interval: 'monthly',
+        features: ['1 Barbeiro', 'Agendamentos ilimitados', 'Controle básico de estoque', 'Suporte por e-mail'],
+        maxBarbers: 1,
+        maxAppointments: 0,
+        maxProducts: 10,
+        hasAI: false,
+        hasReports: false,
+        hasInventory: true,
+        isActive: true,
+        trialDays: 0
+      },
+      {
+        name: 'Basic',
+        price: 29.99,
+        currency: 'BRL',
+        interval: 'monthly',
+        features: ['Até 3 Barbeiros', 'Agendamentos ilimitados', 'Controle de estoque completo', 'Relatórios básicos', 'Suporte prioritário'],
+        maxBarbers: 3,
+        maxAppointments: 0,
+        maxProducts: 0,
+        hasAI: false,
+        hasReports: true,
+        hasInventory: true,
+        isActive: true,
+        trialDays: 7
+      },
+      {
+        name: 'Pro',
+        price: 59.99,
+        currency: 'BRL',
+        interval: 'monthly',
+        features: ['Até 10 Barbeiros', 'Agendamentos ilimitados', 'Controle de estoque completo', 'Relatórios avançados', 'IA Assistente', 'Suporte 24/7'],
+        maxBarbers: 10,
+        maxAppointments: 0,
+        maxProducts: 0,
+        hasAI: true,
+        hasReports: true,
+        hasInventory: true,
+        isActive: true,
+        trialDays: 14
+      },
+      {
+        name: 'Enterprise',
+        price: 99.99,
+        currency: 'BRL',
+        interval: 'monthly',
+        features: ['Barbeiros ilimitados', 'Agendamentos ilimitados', 'Controle de estoque completo', 'Relatórios avançados', 'IA Assistente Premium', 'Suporte VIP 24/7', 'Múltiplas unidades'],
+        maxBarbers: 0,
+        maxAppointments: 0,
+        maxProducts: 0,
+        hasAI: true,
+        hasReports: true,
+        hasInventory: true,
+        isActive: true,
+        trialDays: 30
+      }
+    ];
+
+    try {
+      for (const plan of defaultPlans) {
+        await addPlan(plan);
+      }
+      setShowSeedButton(false);
+    } catch (error) {
+      console.error('Error seeding plans:', error);
+    }
+  };
+
+  React.useEffect(() => {
+    const unsubShops = subscribeToShops<any>((data) => {
+      setShops(data);
+      setLoading(false);
+    });
+
+    const unsubPlans = subscribeToPlans<any>((data) => {
+      setPlans(data);
+    });
+
+    // Calculate stats
+    const calcStats = async () => {
+      const [activeShops, mrr, totalUsers, newShops30d] = await Promise.all([
+        getActiveShopsCount(),
+        getMRR(),
+        getTotalUsersCount(),
+        getNewShopsLast30Days()
+      ]);
+      setStats({ activeShops, mrr, totalUsers, newShops30d });
+    };
+    calcStats();
+
+    return () => {
+      unsubShops();
+      unsubPlans();
+    };
+  }, []);
+
+  const handleToggleShopStatus = async (shop: any) => {
+    const newStatus = shop.status === 'active' ? 'suspended' : 'active';
+    try {
+      await updateShop(shop.id, { status: newStatus });
+    } catch (error) {
+      console.error('Error updating shop:', error);
+    }
+  };
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+  };
+
+  const statsData = [
+    { label: 'Lojas Ativas', val: stats.activeShops.toString(), icon: Building2, color: 'text-blue-500' },
+    { label: 'Receita Mensal (MRR)', val: formatCurrency(stats.mrr), icon: CreditCard, color: 'text-green-500' },
+    { label: 'Usuários Totais', val: stats.totalUsers.toString(), icon: Users, color: 'text-purple-500' },
+    { label: 'Novas Lojas (30d)', val: stats.newShops30d.toString(), icon: TrendingUp, color: 'text-[#C9A84C]' },
   ];
 
   return (
@@ -825,7 +1051,7 @@ function AdminView() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((s, i) => (
+        {statsData.map((s, i) => (
           <div key={i} className="bg-[#141414] border border-[#2A2A2A] p-6 rounded-3xl relative overflow-hidden group">
             <div className="absolute -top-4 -right-4 w-12 h-12 bg-white/5 rounded-full blur-xl group-hover:bg-white/10 transition-all" />
             <s.icon className={cn("w-5 h-5 mb-4", s.color)} />
@@ -835,60 +1061,684 @@ function AdminView() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <Card title="Lojas Recentes">
-            <div className="space-y-1">
-              {[
-                { name: 'Barber Elit', owner: 'Joao Silva', plan: 'Pro', status: 'Ativo' },
-                { name: 'Retro Cuts', owner: 'Marcos Braz', plan: 'Basic', status: 'Ativo' },
-                { name: 'VIP Shave', owner: 'Lucas Neto', plan: 'Pro', status: 'Inadimplente' },
-                { name: 'The Legend', owner: 'Felipe M.', plan: 'Pro', status: 'Ativo' },
-              ].map((shop, i) => (
-                <div key={i} className="flex items-center gap-4 py-4 px-2 hover:bg-white/5 rounded-2xl transition-all cursor-pointer">
-                  <div className="w-10 h-10 rounded-xl bg-[#2A2A2A] flex items-center justify-center font-bold text-[#888]">
-                    {shop.name.charAt(0)}
+      <div className="flex gap-2 border-b border-[#2A2A2A]">
+        <button
+          onClick={() => setActiveTab('shops')}
+          className={cn(
+            "px-6 py-3 text-sm font-bold transition-all border-b-2 -mb-[1px]",
+            activeTab === 'shops' 
+              ? "text-[#C9A84C] border-[#C9A84C]" 
+              : "text-[#888] border-transparent hover:text-white"
+          )}
+        >
+          <Building2 className="w-4 h-4 inline mr-2" />
+          Lojas ({shops.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('plans')}
+          className={cn(
+            "px-6 py-3 text-sm font-bold transition-all border-b-2 -mb-[1px]",
+            activeTab === 'plans' 
+              ? "text-[#C9A84C] border-[#C9A84C]" 
+              : "text-[#888] border-transparent hover:text-white"
+          )}
+        >
+          <Crown className="w-4 h-4 inline mr-2" />
+          Planos ({plans.length})
+        </button>
+      </div>
+
+      {activeTab === 'shops' && (
+        <div className="bg-[#141414] border border-[#2A2A2A] rounded-2xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-[#2A2A2A]">
+                  <th className="text-left text-[10px] font-bold uppercase tracking-widest text-[#888] p-4">Loja</th>
+                  <th className="text-left text-[10px] font-bold uppercase tracking-widest text-[#888] p-4">Dono</th>
+                  <th className="text-left text-[10px] font-bold uppercase tracking-widest text-[#888] p-4">Plano</th>
+                  <th className="text-left text-[10px] font-bold uppercase tracking-widest text-[#888] p-4">Status</th>
+                  <th className="text-left text-[10px] font-bold uppercase tracking-widest text-[#888] p-4">Receita</th>
+                  <th className="text-right text-[10px] font-bold uppercase tracking-widest text-[#888] p-4">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={6} className="text-center p-8">
+                      <Loader2 className="w-6 h-6 text-[#C9A84C] animate-spin inline" />
+                    </td>
+                  </tr>
+                ) : shops.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="text-center p-8 text-[#888] text-sm">
+                      Nenhuma loja cadastrada ainda.
+                    </td>
+                  </tr>
+                ) : (
+                  shops.map((shop, i) => (
+                    <tr key={shop.id || i} className="border-b border-[#2A2A2A]/50 hover:bg-white/5 transition-all">
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-[#2A2A2A] flex items-center justify-center font-bold text-[#888]">
+                            {shop.name?.charAt(0) || '?'}
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-white">{shop.name}</p>
+                            <p className="text-xs text-[#888]">{shop.email || shop.ownerEmail}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-4 text-sm text-[#eee]">{shop.ownerName || 'N/A'}</td>
+                      <td className="p-4">
+                        <span className={cn(
+                          "text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-md",
+                          shop.plan === 'enterprise' ? "bg-purple-500/20 text-purple-400" :
+                          shop.plan === 'pro' ? "bg-blue-500/20 text-blue-400" :
+                          shop.plan === 'basic' ? "bg-green-500/20 text-green-400" :
+                          "bg-gray-500/20 text-gray-400"
+                        )}>
+                          {shop.plan || 'free'}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <span className={cn(
+                          "inline-flex items-center gap-1 text-[10px] font-bold",
+                          shop.status === 'active' ? "text-green-500" :
+                          shop.status === 'suspended' ? "text-red-500" :
+                          shop.status === 'trial' ? "text-yellow-500" : "text-[#888]"
+                        )}>
+                          {shop.status === 'active' ? <CheckCircle className="w-3 h-3" /> :
+                           shop.status === 'suspended' ? <XCircle className="w-3 h-3" /> :
+                           <Clock className="w-3 h-3" />}
+                          {shop.status === 'active' ? 'Ativo' :
+                           shop.status === 'suspended' ? 'Suspenso' :
+                           shop.status === 'trial' ? 'Trial' : shop.status}
+                        </span>
+                      </td>
+                      <td className="p-4 text-sm text-[#C9A84C]">
+                        {shop.monthlyRevenue ? formatCurrency(shop.monthlyRevenue) : 'R$ 0,00'}
+                      </td>
+                      <td className="p-4 text-right">
+                        <button
+                          onClick={() => handleToggleShopStatus(shop)}
+                          className={cn(
+                            "text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all",
+                            shop.status === 'active' 
+                              ? "bg-red-500/10 text-red-500 hover:bg-red-500/20" 
+                              : "bg-green-500/10 text-green-500 hover:bg-green-500/20"
+                          )}
+                        >
+                          {shop.status === 'active' ? 'Suspender' : 'Ativar'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'plans' && (
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <div>
+              {showSeedButton && (
+                <button
+                  onClick={handleSeedDefaultPlans}
+                  className="bg-green-500/10 border border-green-500/30 text-green-500 px-4 py-2 rounded-xl text-sm font-bold hover:bg-green-500/20 transition-all flex items-center gap-2"
+                >
+                  <Zap className="w-4 h-4" />
+                  Criar Planos Padrão (Grátis, Basic R$ 29,99, Pro R$ 59,99, Enterprise)
+                </button>
+              )}
+            </div>
+            <button
+              onClick={() => {
+                setEditingPlan(null);
+                setShowPlanModal(true);
+              }}
+              className="bg-[#C9A84C] text-[#0A0A0A] px-4 py-2 rounded-xl text-sm font-bold hover:bg-[#E8C96A] transition-all flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Novo Plano
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {plans.length === 0 ? (
+              <div className="col-span-full text-center p-8 text-[#888] text-sm">
+                Nenhum plano cadastrado. Crie planos para sua plataforma.
+              </div>
+            ) : (
+              plans.map((plan, i) => (
+                <div key={plan.id || i} className="bg-[#141414] border border-[#2A2A2A] rounded-2xl p-6 relative">
+                  {plan.price === 0 && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-green-500 text-[#0A0A0A] text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-widest">
+                      Grátis
+                    </div>
+                  )}
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 className="text-lg font-bold text-white">{plan.name}</h3>
+                      <p className="text-[#888] text-xs">{plan.interval === 'yearly' ? 'Cobrança anual' : 'Cobrança mensal'}</p>
+                    </div>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => {
+                          setEditingPlan(plan);
+                          setShowPlanModal(true);
+                        }}
+                        className="p-1.5 bg-[#2A2A2A] rounded-lg hover:bg-[#3A3A3A] transition-all"
+                      >
+                        <Edit className="w-3 h-3 text-[#888]" />
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-bold text-white">{shop.name}</p>
-                    <p className="text-xs text-[#888]">{shop.owner}</p>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[10px] font-black uppercase tracking-widest px-2 py-1 bg-[#2A2A2A] text-white rounded-md mb-1 block">
-                      {shop.plan}
+                  <div className="mb-4">
+                    <span className="text-3xl font-bold text-[#C9A84C]">
+                      {plan.price === 0 ? 'Grátis' : formatCurrency(plan.price)}
                     </span>
+                    {plan.price > 0 && (
+                      <span className="text-[#888] text-xs ml-1">/{plan.interval === 'yearly' ? 'ano' : 'mês'}</span>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    {plan.features?.map((feature: string, idx: number) => (
+                      <div key={idx} className="flex items-center gap-2 text-xs text-[#eee]">
+                        <CheckCircle2 className="w-3 h-3 text-green-500 shrink-0" />
+                        {feature}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-4 pt-4 border-t border-[#2A2A2A] flex items-center justify-between">
                     <span className={cn(
-                      "text-[9px] font-bold",
-                      shop.status === 'Ativo' ? "text-green-500" : "text-red-500"
-                    )}>{shop.status}</span>
+                      "text-[10px] font-bold",
+                      plan.isActive ? "text-green-500" : "text-red-500"
+                    )}>
+                      {plan.isActive ? 'Ativo' : 'Inativo'}
+                    </span>
+                    <span className="text-[10px] text-[#888]">
+                      Max: {plan.maxBarbers || '∞'} barbeiros
+                    </span>
                   </div>
                 </div>
-              ))}
-            </div>
-          </Card>
+              ))
+            )}
+          </div>
         </div>
+      )}
 
-        <div className="space-y-6">
-          <Card title="Ações Rápidas">
-            <div className="grid grid-cols-1 gap-2">
-              <button className="w-full py-3 bg-[#C9A84C] text-[#0A0A0A] rounded-xl font-bold text-xs hover:bg-[#E8C96A] transition-all">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <div className="bg-[#141414] border border-[#2A2A2A] p-6 rounded-2xl">
+            <h3 className="text-[11px] uppercase font-bold tracking-widest text-[#C9A84C] mb-4">Ações Rápidas</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <button className="py-3 bg-[#C9A84C] text-[#0A0A0A] rounded-xl font-bold text-xs hover:bg-[#E8C96A] transition-all">
                 Criar Cupom Promocional
               </button>
-              <button className="w-full py-3 bg-[#1A1A1A] border border-[#2A2A2A] text-white rounded-xl font-bold text-xs hover:bg-[#222] transition-all">
+              <button className="py-3 bg-[#1A1A1A] border border-[#2A2A2A] text-white rounded-xl font-bold text-xs hover:bg-[#222] transition-all">
                 Enviar E-mail Global
               </button>
-              <button className="w-full py-3 bg-red-500/10 border border-red-500/20 text-red-500 rounded-xl font-bold text-xs hover:bg-red-500/20 transition-all">
+              <button className="py-3 bg-red-500/10 border border-red-500/20 text-red-500 rounded-xl font-bold text-xs hover:bg-red-500/20 transition-all">
                 Manutenção do Sistema
               </button>
             </div>
-          </Card>
-          
-          <div className="bg-gradient-to-br from-[#9A7A30] to-[#E8C96A] p-6 rounded-[32px] text-black">
-            <ShieldCheck className="w-8 h-8 mb-4" />
-            <h3 className="text-xl font-bold mb-2">Modo Admin Ativo</h3>
-            <p className="text-sm opacity-80 leading-relaxed">Você tem acesso total aos dados de todas as filiais e faturamento da plataforma.</p>
           </div>
         </div>
+
+        <div className="bg-gradient-to-br from-[#9A7A30] to-[#E8C96A] p-6 rounded-[32px] text-black">
+          <ShieldCheck className="w-8 h-8 mb-4" />
+          <h3 className="text-xl font-bold mb-2">Modo Admin Ativo</h3>
+          <p className="text-sm opacity-80 leading-relaxed">Você tem acesso total aos dados de todas as filiais e faturamento da plataforma.</p>
+        </div>
+      </div>
+
+      {showPlanModal && (
+        <PlanModal 
+          plan={editingPlan}
+          onClose={() => {
+            setShowPlanModal(false);
+            setEditingPlan(null);
+          }}
+          onSave={async (planData) => {
+            try {
+              if (editingPlan) {
+                await updatePlan(editingPlan.id, planData);
+              } else {
+                await addPlan(planData);
+              }
+              setShowPlanModal(false);
+              setEditingPlan(null);
+            } catch (error) {
+              console.error('Error saving plan:', error);
+            }
+          }}
+        />
+      )}
+    </motion.div>
+  );
+}
+
+function PlanModal({ plan, onClose, onSave }: any) {
+  const [formData, setFormData] = React.useState({
+    name: plan?.name || '',
+    price: plan?.price || 0,
+    currency: 'BRL',
+    interval: plan?.interval || 'monthly',
+    features: plan?.features?.join('\n') || '',
+    maxBarbers: plan?.maxBarbers || 0,
+    maxAppointments: plan?.maxAppointments || 0,
+    maxProducts: plan?.maxProducts || 0,
+    hasAI: plan?.hasAI || false,
+    hasReports: plan?.hasReports || false,
+    hasInventory: plan?.hasInventory || true,
+    isActive: plan?.isActive !== false,
+    trialDays: plan?.trialDays || 0
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave({
+      ...formData,
+      features: formData.features.split('\n').filter((f: string) => f.trim()),
+      maxBarbers: formData.maxBarbers || null,
+      maxAppointments: formData.maxAppointments || null,
+      maxProducts: formData.maxProducts || null
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-[#141414] border border-[#2A2A2A] rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto"
+      >
+        <h2 className="text-xl font-bold text-white mb-6">
+          {plan ? 'Editar Plano' : 'Novo Plano'}
+        </h2>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="text-[10px] font-bold uppercase tracking-widest text-[#888] mb-1 block">Nome</label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({...formData, name: e.target.value})}
+              className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl px-4 py-2.5 text-sm text-white placeholder-[#555] focus:outline-none focus:border-[#C9A84C]"
+              required
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-[#888] mb-1 block">Preço (R$)</label>
+              <input
+                type="number"
+                step="0.01"
+                value={formData.price}
+                onChange={(e) => setFormData({...formData, price: parseFloat(e.target.value)})}
+                className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl px-4 py-2.5 text-sm text-white placeholder-[#555] focus:outline-none focus:border-[#C9A84C]"
+                required
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-[#888] mb-1 block">Cobrança</label>
+              <select
+                value={formData.interval}
+                onChange={(e) => setFormData({...formData, interval: e.target.value})}
+                className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#C9A84C]"
+              >
+                <option value="monthly">Mensal</option>
+                <option value="yearly">Anual</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="text-[10px] font-bold uppercase tracking-widest text-[#888] mb-1 block">Funcionalidades (uma por linha)</label>
+            <textarea
+              value={formData.features}
+              onChange={(e) => setFormData({...formData, features: e.target.value})}
+              rows={4}
+              className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl px-4 py-2.5 text-sm text-white placeholder-[#555] focus:outline-none focus:border-[#C9A84C] resize-none"
+              placeholder="Ex: Até 5 barbeiros&#10;IA Assistente&#10;Relatórios avançados"
+            />
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-[#888] mb-1 block">Max Barbeiros</label>
+              <input
+                type="number"
+                value={formData.maxBarbers}
+                onChange={(e) => setFormData({...formData, maxBarbers: parseInt(e.target.value)})}
+                className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl px-4 py-2.5 text-sm text-white placeholder-[#555] focus:outline-none focus:border-[#C9A84C]"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-[#888] mb-1 block">Max Agendamentos</label>
+              <input
+                type="number"
+                value={formData.maxAppointments}
+                onChange={(e) => setFormData({...formData, maxAppointments: parseInt(e.target.value)})}
+                className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl px-4 py-2.5 text-sm text-white placeholder-[#555] focus:outline-none focus:border-[#C9A84C]"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-[#888] mb-1 block">Trial (dias)</label>
+              <input
+                type="number"
+                value={formData.trialDays}
+                onChange={(e) => setFormData({...formData, trialDays: parseInt(e.target.value)})}
+                className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl px-4 py-2.5 text-sm text-white placeholder-[#555] focus:outline-none focus:border-[#C9A84C]"
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-sm text-[#eee] cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.hasAI}
+                onChange={(e) => setFormData({...formData, hasAI: e.target.checked})}
+                className="rounded border-[#2A2A2A] bg-[#1A1A1A] text-[#C9A84C] focus:ring-[#C9A84C]"
+              />
+              IA Assistente
+            </label>
+            <label className="flex items-center gap-2 text-sm text-[#eee] cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.hasReports}
+                onChange={(e) => setFormData({...formData, hasReports: e.target.checked})}
+                className="rounded border-[#2A2A2A] bg-[#1A1A1A] text-[#C9A84C] focus:ring-[#C9A84C]"
+              />
+              Relatórios Avançados
+            </label>
+            <label className="flex items-center gap-2 text-sm text-[#eee] cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.hasInventory}
+                onChange={(e) => setFormData({...formData, hasInventory: e.target.checked})}
+                className="rounded border-[#2A2A2A] bg-[#1A1A1A] text-[#C9A84C] focus:ring-[#C9A84C]"
+              />
+              Controle de Estoque
+            </label>
+            <label className="flex items-center gap-2 text-sm text-[#eee] cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.isActive}
+                onChange={(e) => setFormData({...formData, isActive: e.target.checked})}
+                className="rounded border-[#2A2A2A] bg-[#1A1A1A] text-[#C9A84C] focus:ring-[#C9A84C]"
+              />
+              Plano Ativo
+            </label>
+          </div>
+          <div className="flex gap-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-2.5 bg-[#1A1A1A] border border-[#2A2A2A] text-white rounded-xl font-bold text-sm hover:bg-[#222] transition-all"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className="flex-1 py-2.5 bg-[#C9A84C] text-[#0A0A0A] rounded-xl font-bold text-sm hover:bg-[#E8C96A] transition-all"
+            >
+              {plan ? 'Salvar' : 'Criar'}
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
+}
+
+function SetupAdminView() {
+  const { user, checkAdminStatus } = useAuth();
+  const [setting, setSetting] = React.useState(false);
+  const [error, setError] = React.useState('');
+  const [success, setSuccess] = React.useState(false);
+
+  const handleMakeAdmin = async () => {
+    if (!user) return;
+    
+    setSetting(true);
+    setError('');
+    
+    try {
+      const { setUserAsAdmin } = await import('./services/dbService');
+      await setUserAsAdmin(user.uid);
+      await checkAdminStatus();
+      setSuccess(true);
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    } catch (err: any) {
+      setError(err.message || 'Erro ao definir admin');
+    } finally {
+      setSetting(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center p-6">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="max-w-md w-full bg-[#141414] border border-[#2A2A2A] rounded-[32px] p-10 text-center shadow-2xl relative overflow-hidden"
+      >
+        <div className="absolute -top-24 -left-24 w-48 h-48 bg-[#C9A84C]/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-[#C9A84C]/5 rounded-full blur-3xl" />
+        
+        <div className="relative">
+          <div className="w-20 h-20 bg-[#C9A84C] rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-[#C9A84C]/20 border-b-4 border-[#9A7A30]">
+            <ShieldCheck className="w-10 h-10 text-[#0A0A0A]" />
+          </div>
+          
+          <h1 className="text-2xl font-display font-bold text-white mb-3">Configuração Inicial</h1>
+          <p className="text-[#888] text-sm mb-10">
+            Nenhum administrador encontrado. Deseja configurar sua conta como administrador do sistema?
+          </p>
+          
+          {success ? (
+            <div className="bg-green-500/10 border border-green-500/30 text-green-500 p-4 rounded-xl text-sm">
+              <CheckCircle2 className="w-5 h-5 inline mr-2" />
+              Administrador configurado com sucesso! Recarregando...
+            </div>
+          ) : (
+            <>
+              <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl p-4 mb-6 text-left">
+                <p className="text-[10px] text-[#888] font-bold uppercase tracking-widest mb-1">Conta Atual</p>
+                <p className="text-sm text-white font-medium">{user?.email}</p>
+                <p className="text-xs text-[#888] mt-1">UID: {user?.uid}</p>
+              </div>
+
+              {error && (
+                <div className="bg-red-500/10 border border-red-500/30 text-red-500 p-3 rounded-xl text-xs mb-4">
+                  {error}
+                </div>
+              )}
+
+              <button
+                onClick={handleMakeAdmin}
+                disabled={setting}
+                className="w-full bg-[#C9A84C] text-[#0A0A0A] py-4 rounded-2xl font-bold hover:bg-[#E8C96A] hover:scale-[1.02] active:scale-95 transition-all shadow-xl disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {setting ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <>
+                    <ShieldCheck className="w-5 h-5" />
+                    Tornar Administrador
+                  </>
+                )}
+              </button>
+            </>
+          )}
+          
+          <p className="mt-8 text-[10px] text-[#555] uppercase font-black tracking-widest">Kernel Barber Shopper / 2026</p>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+function PricingView() {
+  const [plans, setPlans] = React.useState<any[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const { user } = useAuth();
+
+  React.useEffect(() => {
+    const unsub = subscribeToPlans<any>((data) => {
+      setPlans(data.filter((p: any) => p.isActive !== false));
+      setLoading(false);
+    });
+    return () => unsub();
+  }, []);
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+  };
+
+  const handleSelectPlan = (plan: any) => {
+    if (!user) {
+      alert('Faça login para assinar um plano!');
+      return;
+    }
+    // Here you would integrate with a payment gateway like Stripe
+    alert(`Plano ${plan.name} selecionado! Integração com pagamento em breve.`);
+  };
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="max-w-6xl mx-auto space-y-8 py-8"
+    >
+      <div className="text-center mb-12">
+        <h1 className="text-4xl font-display font-bold text-white mb-4">
+          Escolha o Plano Ideal para sua <span className="text-[#C9A84C]">Barbearia</span>
+        </h1>
+        <p className="text-[#888] text-lg max-w-2xl mx-auto">
+          Gerencie sua barbearia com inteligência artificial e ferramentas profissionais. Comece grátis!
+        </p>
+      </div>
+
+      {loading ? (
+        <div className="text-center py-12">
+          <Loader2 className="w-8 h-8 text-[#C9A84C] animate-spin inline" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-start">
+          {plans.map((plan, i) => {
+            const isFree = plan.price === 0;
+            const isPopular = plan.price === 29.99 || plan.name.toLowerCase().includes('pro');
+            
+            return (
+              <div 
+                key={plan.id || i} 
+                className={cn(
+                  "relative bg-[#141414] border rounded-2xl p-6 transition-all hover:scale-[1.02]",
+                  isPopular ? "border-[#C9A84C] shadow-lg shadow-[#C9A84C]/20" : "border-[#2A2A2A] hover:border-[#3A3A3A]",
+                  isFree && "border-green-500/50"
+                )}
+              >
+                {isPopular && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#C9A84C] text-[#0A0A0A] text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-widest">
+                    Mais Popular
+                  </div>
+                )}
+                {isFree && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-green-500 text-[#0A0A0A] text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-widest">
+                    Grátis
+                  </div>
+                )}
+
+                <div className="text-center mb-6">
+                  <h3 className="text-xl font-bold text-white mb-2">{plan.name}</h3>
+                  <div className="mb-2">
+                    {isFree ? (
+                      <span className="text-4xl font-bold text-green-400">Grátis</span>
+                    ) : (
+                      <>
+                        <span className="text-4xl font-bold text-[#C9A84C]">
+                          {formatCurrency(plan.price).replace(',', ',')}
+                        </span>
+                        <span className="text-[#888] text-sm ml-1">
+                          /{plan.interval === 'yearly' ? 'ano' : 'mês'}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                  {plan.trialDays > 0 && (
+                    <p className="text-[10px] text-[#C9A84C] font-bold">
+                      {plan.trialDays} dias grátis
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-3 mb-6">
+                  {plan.features?.map((feature: string, idx: number) => (
+                    <div key={idx} className="flex items-center gap-2 text-sm text-[#eee]">
+                      <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
+                      {feature}
+                    </div>
+                  ))}
+                  {plan.maxBarbers > 0 && (
+                    <div className="flex items-center gap-2 text-sm text-[#eee]">
+                      <Users className="w-4 h-4 text-[#C9A84C] shrink-0" />
+                      Até {plan.maxBarbers} barbeiro{plan.maxBarbers > 1 ? 's' : ''}
+                    </div>
+                  )}
+                  {plan.hasAI && (
+                    <div className="flex items-center gap-2 text-sm text-[#eee]">
+                      <Bot className="w-4 h-4 text-[#C9A84C] shrink-0" />
+                      IA Assistente inclusa
+                    </div>
+                  )}
+                  {plan.hasReports && (
+                    <div className="flex items-center gap-2 text-sm text-[#eee]">
+                      <TrendingUp className="w-4 h-4 text-[#C9A84C] shrink-0" />
+                      Relatórios avançados
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => handleSelectPlan(plan)}
+                  className={cn(
+                    "w-full py-3 rounded-xl font-bold text-sm transition-all",
+                    isFree 
+                      ? "bg-green-500/10 border border-green-500/30 text-green-500 hover:bg-green-500/20"
+                      : isPopular
+                        ? "bg-[#C9A84C] text-[#0A0A0A] hover:bg-[#E8C96A] shadow-lg shadow-[#C9A84C]/20"
+                        : "bg-[#1A1A1A] border border-[#2A2A2A] text-white hover:bg-[#222]"
+                  )}
+                >
+                  {isFree ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Gift className="w-4 h-4" />
+                      Começar Grátis
+                    </span>
+                  ) : (
+                    <span className="flex items-center justify-center gap-2">
+                      <Zap className="w-4 h-4" />
+                      Assinar Agora
+                    </span>
+                  )}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="mt-12 bg-[#141414] border border-[#2A2A2A] rounded-2xl p-8 text-center">
+        <h3 className="text-xl font-bold text-white mb-4">Precisa de algo personalizado?</h3>
+        <p className="text-[#888] mb-6">Para barbearias com múltiplas unidades ou necessidades específicas.</p>
+        <button className="bg-[#1A1A1A] border border-[#C9A84C]/30 text-[#C9A84C] px-6 py-3 rounded-xl font-bold text-sm hover:bg-[#C9A84C]/10 transition-all">
+          Fale com Vendas
+        </button>
       </div>
     </motion.div>
   );

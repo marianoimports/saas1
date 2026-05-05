@@ -12,51 +12,63 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() && request.auth.token.email == "michaelmarianodasilva81@gmail.com" && request.auth.token.email_verified == true;
+      return isSignedIn() && (
+        request.auth.token.email == "michaelmarianodasilva81@gmail.com" ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin" ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true
+      );
     }
 
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    function isShopStaff() {
+      return isSignedIn() && resource.data.shopId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.shopId;
     }
 
     // User profiles
     match /users/{userId} {
       allow get: if isSignedIn();
-      allow create: if isOwner(userId) && request.resource.data.keys().hasAll(['email', 'role', 'shopId']);
+      allow create: if isOwner(userId) && request.resource.data.keys().hasAll(['email', 'role']);
       allow update: if isOwner(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['uid', 'email']);
     }
 
-    // Shop data
+    // Shops collection (global)
     match /shops/{shopId} {
-      allow get: if isSignedIn();
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+      allow create: if isSignedIn() && request.resource.data.keys().hasAll(['name', 'ownerId', 'plan', 'status']);
 
-      function isShopStaff() {
-        return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.shopId == shopId;
+      function isShopStaffMember() {
+        return isSignedIn() && resource.data.id == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.shopId;
       }
 
       match /barbers/{barberId} {
         allow read: if isSignedIn();
-        allow write: if isShopStaff();
+        allow write: if isShopStaffMember();
       }
 
       match /appointments/{appointmentId} {
-        allow read: if isShopStaff();
-        allow write: if isShopStaff();
+        allow read: if isSignedIn();
+        allow write: if isShopStaffMember();
       }
 
       match /inventory/{itemId} {
-        allow read: if isShopStaff();
-        allow write: if isShopStaff();
+        allow read: if isSignedIn();
+        allow write: if isShopStaffMember();
       }
 
       match /finances/{recordId} {
-        allow read: if isShopStaff();
-        allow write: if isShopStaff();
+        allow read: if isSignedIn();
+        allow write: if isShopStaffMember();
       }
+    }
+
+    // Plans collection
+    match /plans/{planId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
     
     // Test collection
