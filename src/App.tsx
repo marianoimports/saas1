@@ -40,6 +40,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 import { chatWithAI } from './services/geminiService';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { getDocs, collection } from 'firebase/firestore';
+import { db } from './firebase';
 import {
   subscribeToShops,
   subscribeToPlans,
@@ -293,6 +295,7 @@ function AdminLayout({ user, logout, activeTab, setActiveTab }: any) {
   const [shops, setShops] = React.useState<any[]>([]);
   const [plans, setPlans] = React.useState<any[]>([]);
   const [users, setUsers] = React.useState<any[]>([]);
+  const [allUsers, setAllUsers] = React.useState<any[]>([]);
   const [stats, setStats] = React.useState({
     activeShops: 0,
     mrr: 0,
@@ -310,10 +313,39 @@ function AdminLayout({ user, logout, activeTab, setActiveTab }: any) {
       setPlans(data);
     });
 
+    // Subscribe to root users collection
     const unsubUsers = subscribeToUsers<any>((data) => {
       setUsers(data);
-      setLoading(false);
     });
+
+    // Also fetch users from all shops (barbers/clients)
+    const fetchAllShopUsers = async () => {
+      try {
+        const shopsSnapshot = await getDocs(collection(db, 'shops'));
+        const allShopUsers: any[] = [];
+        
+        for (const shopDoc of shopsSnapshot.docs) {
+          const shopId = shopDoc.id;
+          const usersSnapshot = await getDocs(collection(db, `shops/${shopId}/users`));
+          usersSnapshot.forEach(doc => {
+            allShopUsers.push({
+              id: doc.id,
+              ...doc.data(),
+              shopId,
+              source: 'shop'
+            });
+          });
+        }
+        
+        setAllUsers(allShopUsers);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching shop users:', error);
+        setLoading(false);
+      }
+    };
+
+    fetchAllShopUsers();
 
     const calcStats = async () => {
       const [activeShops, mrr, totalUsers, newShops30d] = await Promise.all([
@@ -322,7 +354,7 @@ function AdminLayout({ user, logout, activeTab, setActiveTab }: any) {
         getTotalUsersCount(),
         getNewShopsLast30Days()
       ]);
-      setStats({ activeShops, mrr, totalUsers, newShops30d });
+      setStats({ activeShops, mrr, totalUsers: totalUsers + allUsers.length, newShops30d });
     };
     calcStats();
 
@@ -627,7 +659,7 @@ function AdminLayout({ user, logout, activeTab, setActiveTab }: any) {
                         <th className="text-left text-[10px] font-bold uppercase tracking-widest text-[#888] p-4">Usuário</th>
                         <th className="text-left text-[10px] font-bold uppercase tracking-widest text-[#888] p-4">Email</th>
                         <th className="text-left text-[10px] font-bold uppercase tracking-widest text-[#888] p-4">Função</th>
-                        <th className="text-left text-[10px] font-bold uppercase tracking-widest text-[#888] p-4">Criado em</th>
+                        <th className="text-left text-[10px] font-bold uppercase tracking-widest text-[#888] p-4">Loja</th>
                         <th className="text-right text-[10px] font-bold uppercase tracking-widest text-[#888] p-4">Ações</th>
                       </tr>
                     </thead>
@@ -638,51 +670,88 @@ function AdminLayout({ user, logout, activeTab, setActiveTab }: any) {
                             <Loader2 className="w-6 h-6 text-[#C9A84C] animate-spin inline" />
                           </td>
                         </tr>
-                      ) : users.length === 0 ? (
-                        <tr>
-                          <td colSpan={5} className="text-center p-8 text-[#888] text-sm">
-                            Nenhum usuário cadastrado ainda.
-                          </td>
-                        </tr>
                       ) : (
-                        users.map((u, i) => (
-                          <tr key={u.uid || i} className="border-b border-[#2A2A2A]/50 hover:bg-white/5 transition-all">
-                            <td className="p-4">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#C9A84C] to-[#9A7A30] flex items-center justify-center text-xs font-bold text-[#0A0A0A]">
-                                  {(u.displayName || u.email || '?').charAt(0).toUpperCase()}
+                        <>
+                          {/* Users from root collection */}
+                          {users.map((u, i) => (
+                            <tr key={u.uid || `root-${i}`} className="border-b border-[#2A2A2A]/50 hover:bg-white/5 transition-all">
+                              <td className="p-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#C9A84C] to-[#9A7A30] flex items-center justify-center text-xs font-bold text-[#0A0A0A]">
+                                    {(u.displayName || u.email || '?').charAt(0).toUpperCase()}
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-bold text-white">{u.displayName || 'Sem nome'}</p>
+                                    <p className="text-xs text-[#888]">ID: {u.uid}</p>
+                                  </div>
                                 </div>
-                                <div>
-                                  <p className="text-sm font-bold text-white">{u.displayName || 'Sem nome'}</p>
-                                  <p className="text-xs text-[#888]">{u.shopName || 'N/A'}</p>
+                              </td>
+                              <td className="p-4 text-sm text-[#eee]">{u.email}</td>
+                              <td className="p-4">
+                                <span className={cn(
+                                  "text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-md",
+                                  u.role === 'admin' ? "bg-[#C9A84C]/20 text-[#C9A84C]" :
+                                  u.role === 'owner' ? "bg-green-500/20 text-green-400" :
+                                  "bg-gray-500/20 text-gray-400"
+                                )}>
+                                  {u.role || 'user'}
+                                </span>
+                              </td>
+                              <td className="p-4 text-xs text-[#888]">N/A (Root)</td>
+                              <td className="p-4 text-right">
+                                {u.email !== 'michaelmarianodasilva81@gmail.com' && (
+                                  <button
+                                    onClick={() => handleDeleteUser(u.uid)}
+                                    className="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-all"
+                                  >
+                                    <Trash2 className="w-3 h-3 inline mr-1" />
+                                    Deletar
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+
+                          {/* Users from all shops */}
+                          {allUsers.map((u, i) => (
+                            <tr key={u.id || `shop-${i}`} className="border-b border-[#2A2A2A]/50 hover:bg-white/5 transition-all">
+                              <td className="p-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-xs font-bold text-blue-400">
+                                    {(u.name || u.email || '?').charAt(0).toUpperCase()}
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-bold text-white">{u.name || 'Sem nome'}</p>
+                                    <p className="text-xs text-[#888]">ID: {u.id}</p>
+                                  </div>
                                 </div>
-                              </div>
-                            </td>
-                            <td className="p-4 text-sm text-[#eee]">{u.email}</td>
-                            <td className="p-4">
-                              <span className={cn(
-                                "text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-md",
-                                u.role === 'admin' ? "bg-[#C9A84C]/20 text-[#C9A84C]" :
-                                u.role === 'barber' ? "bg-blue-500/20 text-blue-400" :
-                                "bg-gray-500/20 text-gray-400"
-                              )}>
-                                {u.role || 'user'}
-                              </span>
-                            </td>
-                            <td className="p-4 text-xs text-[#888]">
-                              {u.createdAt ? new Date(u.createdAt.seconds * 1000).toLocaleDateString('pt-BR') : 'N/A'}
-                            </td>
-                            <td className="p-4 text-right">
-                              <button
-                                onClick={() => handleDeleteUser(u.uid)}
-                                className="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-all"
-                              >
-                                <Trash2 className="w-3 h-3 inline mr-1" />
-                                Deletar
-                              </button>
-                            </td>
-                          </tr>
-                        ))
+                              </td>
+                              <td className="p-4 text-sm text-[#eee]">{u.email || 'N/A'}</td>
+                              <td className="p-4">
+                                <span className={cn(
+                                  "text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-md",
+                                  u.role === 'barber' ? "bg-blue-500/20 text-blue-400" :
+                                  u.role === 'client' ? "bg-purple-500/20 text-purple-400" :
+                                  "bg-gray-500/20 text-gray-400"
+                                )}>
+                                  {u.role || 'user'}
+                                </span>
+                              </td>
+                              <td className="p-4 text-xs text-[#888]">{u.shopId || 'N/A'}</td>
+                              <td className="p-4 text-right">
+                                <span className="text-[10px] text-[#666]">Shop user</span>
+                              </td>
+                            </tr>
+                          ))}
+
+                          {users.length === 0 && allUsers.length === 0 && (
+                            <tr>
+                              <td colSpan={5} className="text-center p-8 text-[#888] text-sm">
+                                Nenhum usuário cadastrado ainda.
+                              </td>
+                            </tr>
+                          )}
+                        </>
                       )}
                     </tbody>
                   </table>
