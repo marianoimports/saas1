@@ -274,3 +274,129 @@ export async function getNewShopsLast30Days(): Promise<number> {
     return 0;
   }
 }
+
+// ==================== USER MANAGEMENT ====================
+export async function deleteUser(userId: string) {
+  try {
+    // Delete user document from Firestore
+    await deleteDoc(doc(db, 'users', userId));
+    // Note: To delete from Firebase Auth, you need a Cloud Function
+    console.log('User document deleted. Auth deletion requires Cloud Function.');
+  } catch (error) {
+    console.error("Error deleting user: ", error);
+    throw error;
+  }
+}
+
+export async function sendPasswordResetEmail(email: string) {
+  try {
+    // Import Firebase Auth dynamically to avoid circular deps
+    const { sendPasswordResetEmail: firebaseSendReset } = await import('firebase/auth');
+    const { auth } = await import('../firebase');
+    await firebaseSendReset(auth, email);
+  } catch (error) {
+    console.error("Error sending password reset: ", error);
+    throw error;
+  }
+}
+
+// ==================== STRIPE INTEGRATION (Mock/Setup) ====================
+export interface StripeConfig {
+  enabled: boolean;
+  publishableKey: string;
+  webhookSecret: string;
+  plans: {
+    [key: string]: {
+      priceId: string;
+      productId: string;
+    }
+  };
+}
+
+export async function getStripeConfig(): Promise<StripeConfig | null> {
+  try {
+    const docRef = doc(db, 'settings', 'stripe');
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return docSnap.data() as StripeConfig;
+    }
+    return null;
+  } catch (error) {
+    console.error("Error getting Stripe config: ", error);
+    return null;
+  }
+}
+
+export async function saveStripeConfig(config: Partial<StripeConfig>) {
+  try {
+    await setDoc(doc(db, 'settings', 'stripe'), {
+      ...config,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  } catch (error) {
+    console.error("Error saving Stripe config: ", error);
+    throw error;
+  }
+}
+
+// ==================== USER SUBSCRIPTIONS ====================
+export function subscribeToUsers<T>(
+  callback: (data: T[]) => void
+) {
+  const q = query(
+    collection(db, 'users'),
+    orderBy('createdAt', 'desc')
+  );
+
+  return onSnapshot(q, (snapshot) => {
+    const items = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as T & { id: string }));
+    callback(items);
+  }, (error) => {
+    console.error(`Error subscribing to users:`, error);
+  });
+}
+
+export async function createStripeCheckout(planId: string, userId: string, userEmail: string) {
+  try {
+    // In production, this would call a Firebase Cloud Function
+    // that creates a Stripe Checkout Session
+    const config = await getStripeConfig();
+    if (!config?.enabled) {
+      throw new Error('Stripe not configured');
+    }
+
+    const plan = await getDoc(doc(db, 'plans', planId));
+    if (!plan.exists()) {
+      throw new Error('Plan not found');
+    }
+
+    const planData = plan.data();
+    const priceId = config.plans?.[planId]?.priceId;
+
+    if (!priceId) {
+      throw new Error('Stripe price ID not configured for this plan');
+    }
+
+    // Simulate API call to Cloud Function
+    const response = await fetch('/api/create-checkout-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        priceId,
+        userId,
+        userEmail,
+        planName: planData.name,
+        successUrl: `${window.location.origin}/dashboard?success=true`,
+        cancelUrl: `${window.location.origin}/pricing?canceled=true`
+      })
+    });
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error creating checkout: ", error);
+    throw error;
+  }
+}

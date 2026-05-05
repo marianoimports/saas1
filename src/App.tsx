@@ -40,13 +40,16 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 import { chatWithAI } from './services/geminiService';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { 
-  subscribeToShops, 
-  subscribeToPlans, 
-  addShop, 
-  updateShop, 
-  addPlan, 
+import {
+  subscribeToShops,
+  subscribeToPlans,
+  subscribeToUsers,
+  addShop,
+  updateShop,
+  addPlan,
   updatePlan,
+  deleteUser,
+  sendPasswordResetEmail,
   getActiveShopsCount,
   getTotalUsersCount,
   getMRR,
@@ -875,6 +878,7 @@ function IAAssistantView({ messages, input, setInput, sendMessage, isTyping, cha
 function AdminView() {
   const [shops, setShops] = React.useState<any[]>([]);
   const [plans, setPlans] = React.useState<any[]>([]);
+  const [users, setUsers] = React.useState<any[]>([]);
   const [stats, setStats] = React.useState({
     activeShops: 0,
     mrr: 0,
@@ -882,21 +886,27 @@ function AdminView() {
     newShops30d: 0
   });
   const [loading, setLoading] = React.useState(true);
-  const [activeTab, setActiveTab] = React.useState<'shops' | 'plans'>('shops');
+  const [activeTab, setActiveTab] = React.useState<'shops' | 'plans' | 'users'>('shops');
   const [showPlanModal, setShowPlanModal] = React.useState(false);
   const [editingPlan, setEditingPlan] = React.useState<any>(null);
   const [showSeedButton, setShowSeedButton] = React.useState(false);
+  const [actionLoading, setActionLoading] = React.useState<string | null>(null);
   const { user, checkAdminStatus } = useAuth();
 
   React.useEffect(() => {
     const unsubShops = subscribeToShops<any>((data) => {
       setShops(data);
-      setLoading(false);
     });
 
     const unsubPlans = subscribeToPlans<any>((data) => {
       setPlans(data);
       setShowSeedButton(data.length === 0);
+    });
+
+    // Subscribe to users
+    const unsubUsers = subscribeToUsers<any>((data) => {
+      setUsers(data);
+      setLoading(false);
     });
 
     // Calculate stats
@@ -914,6 +924,7 @@ function AdminView() {
     return () => {
       unsubShops();
       unsubPlans();
+      unsubUsers();
     };
   }, []);
 
@@ -991,34 +1002,6 @@ function AdminView() {
     }
   };
 
-  React.useEffect(() => {
-    const unsubShops = subscribeToShops<any>((data) => {
-      setShops(data);
-      setLoading(false);
-    });
-
-    const unsubPlans = subscribeToPlans<any>((data) => {
-      setPlans(data);
-    });
-
-    // Calculate stats
-    const calcStats = async () => {
-      const [activeShops, mrr, totalUsers, newShops30d] = await Promise.all([
-        getActiveShopsCount(),
-        getMRR(),
-        getTotalUsersCount(),
-        getNewShopsLast30Days()
-      ]);
-      setStats({ activeShops, mrr, totalUsers, newShops30d });
-    };
-    calcStats();
-
-    return () => {
-      unsubShops();
-      unsubPlans();
-    };
-  }, []);
-
   const handleToggleShopStatus = async (shop: any) => {
     const newStatus = shop.status === 'active' ? 'suspended' : 'active';
     try {
@@ -1085,6 +1068,18 @@ function AdminView() {
         >
           <Crown className="w-4 h-4 inline mr-2" />
           Planos ({plans.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('users')}
+          className={cn(
+            "px-6 py-3 text-sm font-bold transition-all border-b-2 -mb-[1px]",
+            activeTab === 'users' 
+              ? "text-[#C9A84C] border-[#C9A84C]" 
+              : "text-[#888] border-transparent hover:text-white"
+          )}
+        >
+          <Users className="w-4 h-4 inline mr-2" />
+          Usuários ({users.length})
         </button>
       </div>
 
@@ -1267,6 +1262,117 @@ function AdminView() {
                 </div>
               ))
             )}
+          </div>
+      </div>
+        )}
+
+      {activeTab === 'users' && (
+        <div className="bg-[#141414] border border-[#2A2A2A] rounded-2xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-[#2A2A2A]">
+                  <th className="text-left text-[10px] font-bold uppercase tracking-widest text-[#888] p-4">Usuário</th>
+                  <th className="text-left text-[10px] font-bold uppercase tracking-widest text-[#888] p-4">Email</th>
+                  <th className="text-left text-[10px] font-bold uppercase tracking-widest text-[#888] p-4">Role</th>
+                  <th className="text-left text-[10px] font-bold uppercase tracking-widest text-[#888] p-4">Criado em</th>
+                  <th className="text-right text-[10px] font-bold uppercase tracking-widest text-[#888] p-4">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={5} className="text-center p-8">
+                      <Loader2 className="w-6 h-6 text-[#C9A84C] animate-spin inline" />
+                    </td>
+                  </tr>
+                ) : users.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="text-center p-8 text-[#888] text-sm">
+                      Nenhum usuário cadastrado.
+                    </td>
+                  </tr>
+                ) : (
+                  users.map((u, i) => (
+                    <tr key={u.id || i} className="border-b border-[#2A2A2A]/50 hover:bg-white/5 transition-all">
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-[#2A2A2A] flex items-center justify-center font-bold text-[#888]">
+                            {(u.displayName || u.email || '?').charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-white">{u.displayName || 'Sem nome'}</p>
+                            <p className="text-xs text-[#888]">UID: {u.uid || u.id}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-4 text-sm text-[#eee]">{u.email}</td>
+                      <td className="p-4">
+                        <span className={cn(
+                          "text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-md",
+                          u.role === 'admin' ? "bg-[#C9A84C]/20 text-[#C9A84C]" :
+                          "bg-blue-500/20 text-blue-400"
+                        )}>
+                          {u.role || 'user'}
+                        </span>
+                      </td>
+                      <td className="p-4 text-xs text-[#888]">
+                        {u.createdAt?.toDate ? u.createdAt.toDate().toLocaleDateString('pt-BR') : 
+                         u.createdAt ? new Date(u.createdAt).toLocaleDateString('pt-BR') : 'N/A'}
+                      </td>
+                      <td className="p-4 text-right">
+                        <div className="flex gap-2 justify-end">
+                          <button
+                            onClick={async () => {
+                              if (!confirm(`Enviar e-mail de recuperação para ${u.email}?`)) return;
+                              setActionLoading(u.id);
+                              try {
+                                await sendPasswordResetEmail(u.email);
+                                alert('E-mail de recuperação enviado!');
+                              } catch (error: any) {
+                                alert(`Erro: ${error.message}`);
+                              } finally {
+                                setActionLoading(null);
+                              }
+                            }}
+                            disabled={actionLoading === u.id}
+                            className="p-1.5 bg-blue-500/10 text-blue-500 rounded-lg hover:bg-blue-500/20 transition-all disabled:opacity-50"
+                            title="Enviar recuperação de senha"
+                          >
+                            {actionLoading === u.id ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Send className="w-3 h-3" />
+                            )}
+                          </button>
+                          {u.email !== 'michaelmarianodasilva81@gmail.com' && (
+                            <button
+                              onClick={async () => {
+                                if (!confirm(`Excluir usuário ${u.email}? Esta ação não pode ser desfeita.`)) return;
+                                setActionLoading(u.id);
+                                try {
+                                  await deleteUser(u.id);
+                                  alert('Usuário excluído com sucesso!');
+                                } catch (error: any) {
+                                  alert(`Erro: ${error.message}`);
+                                } finally {
+                                  setActionLoading(null);
+                                }
+                              }}
+                              disabled={actionLoading === u.id}
+                              className="p-1.5 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-all disabled:opacity-50"
+                              title="Excluir usuário"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
