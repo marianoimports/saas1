@@ -1,0 +1,67 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.email == "michaelmarianodasilva81@gmail.com" && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // User profiles
+    match /users/{userId} {
+      allow get: if isSignedIn();
+      allow create: if isOwner(userId) && request.resource.data.keys().hasAll(['email', 'role', 'shopId']);
+      allow update: if isOwner(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['uid', 'email']);
+    }
+
+    // Shop data
+    match /shops/{shopId} {
+      allow get: if isSignedIn();
+
+      function isShopStaff() {
+        return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.shopId == shopId;
+      }
+
+      match /barbers/{barberId} {
+        allow read: if isSignedIn();
+        allow write: if isShopStaff();
+      }
+
+      match /appointments/{appointmentId} {
+        allow read: if isShopStaff();
+        allow write: if isShopStaff();
+      }
+
+      match /inventory/{itemId} {
+        allow read: if isShopStaff();
+        allow write: if isShopStaff();
+      }
+
+      match /finances/{recordId} {
+        allow read: if isShopStaff();
+        allow write: if isShopStaff();
+      }
+    }
+    
+    // Test collection
+    match /test/connection {
+      allow get: if true;
+    }
+  }
+}

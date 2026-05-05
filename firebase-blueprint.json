@@ -1,0 +1,95 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A shop owner or staff member.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["owner", "barber", "receptionist"] },
+        "shopId": { "type": "string" }
+      },
+      "required": ["uid", "email", "role", "shopId"]
+    },
+    "Barber": {
+      "title": "Barber",
+      "description": "A professional barber in the shop.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "rating": { "type": "number" },
+        "avatar": { "type": "string" },
+        "stats": {
+          "type": "object",
+          "properties": {
+            "monthlyCuts": { "type": "number" },
+            "revenue": { "type": "number" }
+          }
+        }
+      },
+      "required": ["name", "role"]
+    },
+    "Appointment": {
+      "title": "Appointment",
+      "description": "A scheduled service.",
+      "type": "object",
+      "properties": {
+        "startTime": { "type": "string", "format": "date-time" },
+        "clientName": { "type": "string" },
+        "service": { "type": "string" },
+        "barberId": { "type": "string" },
+        "status": { "type": "string", "enum": ["confirmed", "pending", "cancelled", "completed"] },
+        "price": { "type": "number" }
+      },
+      "required": ["startTime", "clientName", "barberId", "status"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Inventory item.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "quantity": { "type": "number" },
+        "minQuantity": { "type": "number" }
+      },
+      "required": ["name", "quantity"]
+    },
+    "Finance": {
+      "title": "Finance Record",
+      "description": "Revenue or expense record.",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["revenue", "expense"] },
+        "category": { "type": "string" },
+        "amount": { "type": "number" },
+        "date": { "type": "string", "format": "date-time" }
+      },
+      "required": ["type", "amount", "date"]
+    }
+  },
+  "firestore": {
+    "/shops/{shopId}/barbers": {
+      "schema": "Barber",
+      "description": "Barbers registered in a specific shop."
+    },
+    "/shops/{shopId}/appointments": {
+      "schema": "Appointment",
+      "description": "Appointments for a specific shop."
+    },
+    "/shops/{shopId}/inventory": {
+      "schema": "Product",
+      "description": "Inventory for a specific shop."
+    },
+    "/shops/{shopId}/finances": {
+      "schema": "Finance",
+      "description": "Financial records for a specific shop."
+    },
+    "/users": {
+      "schema": "User",
+      "description": "Global user profiles."
+    }
+  }
+}
