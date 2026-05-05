@@ -863,34 +863,27 @@ function LoginScreen() {
 
 function AppContent() {
   const { user, loading, isAdmin, checkAdminStatus } = useAuth();
-  const [needsSetup, setNeedsSetup] = React.useState(false);
-  const [checkingSetup, setCheckingSetup] = React.useState(true);
+  const [checkingAuth, setCheckingAuth] = React.useState(true);
 
   React.useEffect(() => {
-    const checkSetup = async () => {
+    const checkAuth = async () => {
       if (user) {
-        await checkAdminStatus();
-        // Import dynamically to avoid circular dependency
-        const { checkIfAdminExists } = await import('./services/dbService');
-        const adminExists = await checkIfAdminExists();
-        console.log('Admin exists:', adminExists, 'isAdmin:', isAdmin, 'email:', user?.email);
-        setNeedsSetup(!adminExists);
+        // Force admin check for specific email
+        if (user.email === 'michaelmarianodasilva81@gmail.com') {
+          await checkAdminStatus(user);
+        }
       }
-      setCheckingSetup(false);
+      setCheckingAuth(false);
     };
-    checkSetup();
+    checkAuth();
   }, [user, checkAdminStatus]);
 
-  if (loading || checkingSetup) {
+  if (loading || checkingAuth) {
     return (
       <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-[#C9A84C] animate-spin" />
       </div>
     );
-  }
-
-  if (user && needsSetup && !isAdmin && user?.email !== 'michaelmarianodasilva81@gmail.com') {
-    return <SetupAdminView />;
   }
 
   return user ? <MainApp /> : <LoginScreen />;
@@ -1369,96 +1362,6 @@ function IAAssistantView({ messages, input, setInput, sendMessage, isTyping, cha
         </button>
       </div>
     </motion.div>
-  );
-}
-
-function SetupAdminView() {
-  const { user, checkAdminStatus } = useAuth();
-  const [setting, setSetting] = React.useState(false);
-  const [error, setError] = React.useState('');
-  const [success, setSuccess] = React.useState(false);
-
-  const handleMakeAdmin = async () => {
-    if (!user) return;
-    
-    setSetting(true);
-    setError('');
-    
-    try {
-      const { setUserAsAdmin } = await import('./services/dbService');
-      await setUserAsAdmin(user.uid);
-      await checkAdminStatus();
-      setSuccess(true);
-      setTimeout(() => {
-        window.location.reload();
-      }, 2000);
-    } catch (err: any) {
-      setError(err.message || 'Erro ao definir admin');
-    } finally {
-      setSetting(false);
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center p-6">
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="max-w-md w-full bg-[#141414] border border-[#2A2A2A] rounded-[32px] p-10 text-center shadow-2xl relative overflow-hidden"
-      >
-        <div className="absolute -top-24 -left-24 w-48 h-48 bg-[#C9A84C]/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-[#C9A84C]/5 rounded-full blur-3xl" />
-        
-        <div className="relative">
-          <div className="w-20 h-20 bg-[#C9A84C] rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-[#C9A84C]/20 border-b-4 border-[#9A7A30]">
-            <ShieldCheck className="w-10 h-10 text-[#0A0A0A]" />
-          </div>
-          
-          <h1 className="text-2xl font-display font-bold text-white mb-3">Configuração Inicial</h1>
-          <p className="text-[#888] text-sm mb-10">
-            Nenhum administrador encontrado. Deseja configurar sua conta como administrador do sistema?
-          </p>
-          
-          {success ? (
-            <div className="bg-green-500/10 border border-green-500/30 text-green-500 p-4 rounded-xl text-sm">
-              <CheckCircle2 className="w-5 h-5 inline mr-2" />
-              Administrador configurado com sucesso! Recarregando...
-            </div>
-          ) : (
-            <>
-              <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl p-4 mb-6 text-left">
-                <p className="text-[10px] text-[#888] font-bold uppercase tracking-widest mb-1">Conta Atual</p>
-                <p className="text-sm text-white font-medium">{user?.email}</p>
-                <p className="text-xs text-[#888] mt-1">UID: {user?.uid}</p>
-              </div>
-
-              {error && (
-                <div className="bg-red-500/10 border border-red-500/30 text-red-500 p-3 rounded-xl text-xs mb-4">
-                  {error}
-                </div>
-              )}
-
-              <button
-                onClick={handleMakeAdmin}
-                disabled={setting}
-                className="w-full bg-[#C9A84C] text-[#0A0A0A] py-4 rounded-2xl font-bold hover:bg-[#E8C96A] hover:scale-[1.02] active:scale-95 transition-all shadow-xl disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {setting ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <>
-                    <ShieldCheck className="w-5 h-5" />
-                    Tornar Administrador
-                  </>
-                )}
-              </button>
-            </>
-          )}
-          
-          <p className="mt-8 text-[10px] text-[#555] uppercase font-black tracking-widest">Kernel Barber Shopper / 2026</p>
-        </div>
-      </motion.div>
-    </div>
   );
 }
 
