@@ -63,13 +63,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        // Create user document if it doesn't exist
+        // Create user document if it doesn't exist (this also sets shopId: user.uid)
         await createUserDocument(currentUser);
-        // Fetch user data to get shopId
-        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-        if (userDoc.exists()) {
-          setUserData(userDoc.data());
+        
+        // Fetch user data to get shopId - try multiple times if needed
+        let attempts = 0;
+        let userDataFetched = null;
+        while (attempts < 5) {
+          const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+          if (userDoc.exists()) {
+            const data = userDoc.data();
+            if (data.shopId) {
+              userDataFetched = data;
+              break;
+            }
+          }
+          attempts++;
+          await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms before retry
         }
+        
+        if (userDataFetched) {
+          setUserData(userDataFetched);
+          console.log('User data loaded with shopId:', userDataFetched.shopId);
+        }
+        
         await checkAdminStatus(currentUser.uid);
       } else {
         setIsAdmin(false);
