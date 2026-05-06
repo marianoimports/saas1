@@ -66,28 +66,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Create user document if it doesn't exist (this also sets shopId: user.uid)
         await createUserDocument(currentUser);
         
-        // Fetch user data to get shopId - try multiple times if needed
-        let attempts = 0;
-        let userDataFetched = null;
-        while (attempts < 5) {
-          const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-          if (userDoc.exists()) {
-            const data = userDoc.data();
-            if (data.shopId) {
-              userDataFetched = data;
-              break;
-            }
-          }
-          attempts++;
-          await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms before retry
+        // Fetch user data to get shopId
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          setUserData(data);
+          console.log('User data loaded with shopId:', data.shopId || currentUser.uid);
+        } else {
+          // If user doc doesn't exist yet, use uid as shopId
+          setUserData({ shopId: currentUser.uid, email: currentUser.email });
+          console.log('No user doc, using uid as shopId:', currentUser.uid);
         }
         
-        if (userDataFetched) {
-          setUserData(userDataFetched);
-          console.log('User data loaded with shopId:', userDataFetched.shopId);
-        }
-        
-        await checkAdminStatus(currentUser.uid);
+        await checkAdminStatus(currentUser);
       } else {
         setIsAdmin(false);
         setUserData(null);

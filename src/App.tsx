@@ -97,14 +97,18 @@ function MainApp() {
   const chatEndRef = React.useRef<HTMLDivElement>(null);
   const [activeAdminTab, setActiveAdminTab] = React.useState<'overview' | 'shops' | 'users' | 'plans' | 'settings'>('overview');
 
-  // Get shopId dynamically
-  const [shopId, setShopId] = React.useState('');
+  // Get shopId - ALWAYS use user.uid as fallback
+  const shopId = React.useMemo(() => {
+    if (userData?.shopId) return userData.shopId;
+    if (user?.uid) return user.uid; // Direct fallback to uid
+    return '';
+  }, [userData, user]);
+  
   const [shopIdLoading, setShopIdLoading] = React.useState(true);
   
   React.useEffect(() => {
-    const getShopId = async () => {
+    const setupShopId = async () => {
       if (!user?.uid) {
-        setShopId('');
         setShopIdLoading(false);
         return;
       }
@@ -117,28 +121,25 @@ function MainApp() {
         
         if (snapshot.exists()) {
           const data = snapshot.data();
-          if (data.shopId) {
-            setShopId(data.shopId);
-          } else {
+          if (!data.shopId) {
             // Create shopId if missing
+            console.log('Adding shopId to user document:', user.uid);
             const { setDoc, serverTimestamp } = await import('firebase/firestore');
             await setDoc(userRef, { shopId: user.uid, updatedAt: serverTimestamp() }, { merge: true });
-            setShopId(user.uid);
           }
         } else {
           // Create user document if doesn't exist
+          console.log('Creating user document with shopId:', user.uid);
           await createUserDocument(user);
-          setShopId(user.uid);
         }
       } catch (error) {
-        console.error('Error getting shopId:', error);
-        setShopId(user?.uid || '');
+        console.error('Error setting up shopId:', error);
       } finally {
         setShopIdLoading(false);
       }
     };
     
-    getShopId();
+    setupShopId();
   }, [user]);
 
   React.useEffect(() => {
@@ -316,10 +317,10 @@ function MainApp() {
           )}
           
           <AnimatePresence mode="wait">
-            {!shopIdLoading && activeView === 'dashboard' && <DashboardView key="dashboard" onNavigate={setActiveView} shopId={shopId} />}
-            {!shopIdLoading && activeView === 'agenda' && <AgendaView key="agenda" onNavigate={setActiveView} shopId={shopId} />}
+            {!shopIdLoading && shopId && activeView === 'dashboard' && <DashboardView key="dashboard" onNavigate={setActiveView} shopId={shopId} />}
+            {!shopIdLoading && shopId && activeView === 'agenda' && <AgendaView key="agenda" onNavigate={setActiveView} shopId={shopId} />}
             {!shopIdLoading && activeView === 'barbers' && <BarbersView key="barbers" />}
-            {!shopIdLoading && activeView === 'estoque' && <StockView key="estoque" onNavigate={setActiveView} shopId={shopId} />}
+            {!shopIdLoading && shopId && activeView === 'estoque' && <StockView key="estoque" onNavigate={setActiveView} shopId={shopId} />}
             {!shopIdLoading && activeView === 'financeiro' && <FinanceiroView key="financeiro" />}
             {!shopIdLoading && activeView === 'pricing' && <PricingView key="pricing" />}
             {activeView === 'ia' && (
@@ -1043,10 +1044,10 @@ function DashboardView({ onNavigate, shopId }: { onNavigate: (v: View) => void, 
     });
 
     // Fetch stock
-    const unsubStock = subscribeToCollection(`${shopId}/stock`, (data) => {
+    const unsubStock = subscribeToCollection('stock', (data) => {
       const alerts = data.filter((item: any) => item.qty <= 5);
       setStockAlerts(alerts.slice(0, 4));
-    });
+    }, shopId);
 
     // Mock other metrics for now (can be enhanced later)
     setMetrics(prev => ({
@@ -1379,10 +1380,10 @@ function StockView({ onNavigate, shopId }: { onNavigate: (v: View) => void, shop
 
   React.useEffect(() => {
     if (!shopId) return;
-    const unsub = subscribeToCollection(`${shopId}/stock`, (data) => {
+    const unsub = subscribeToCollection('stock', (data) => {
       setStock(data.filter((item: any) => item.active !== false));
       setLoading(false);
-    });
+    }, shopId);
     return () => unsub();
   }, [shopId]);
 
