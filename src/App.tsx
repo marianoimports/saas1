@@ -257,8 +257,8 @@ function MainApp() {
         {/* Main Content */}
         <main className="flex-1 overflow-y-auto p-6 md:p-10 custom-scroll">
           <AnimatePresence mode="wait">
-            {activeView === 'dashboard' && <DashboardView key="dashboard" onNavigate={setActiveView} shopId={userData?.shopId || user?.uid || ''} />}
-            {activeView === 'agenda' && <AgendaView key="agenda" onNavigate={setActiveView} shopId={userData?.shopId || user?.uid || ''} />}
+            {activeView === 'dashboard' && <DashboardView key="dashboard" onNavigate={setActiveView} shopId={userData?.shopId || ''} />}
+            {activeView === 'agenda' && <AgendaView key="agenda" onNavigate={setActiveView} shopId={userData?.shopId || ''} />}
             {activeView === 'barbers' && <BarbersView key="barbers" />}
             {activeView === 'estoque' && <StockView key="estoque" onNavigate={setActiveView} />}
             {activeView === 'financeiro' && <FinanceiroView key="financeiro" />}
@@ -963,7 +963,10 @@ function DashboardView({ onNavigate, shopId }: { onNavigate: (v: View) => void, 
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
-    if (!shopId) return;
+    if (!shopId) {
+      setLoading(false);
+      return;
+    }
 
     // Fetch appointments for today
     const today = new Date().toISOString().split('T')[0];
