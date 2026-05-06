@@ -99,11 +99,13 @@ function MainApp() {
 
   // Get shopId dynamically
   const [shopId, setShopId] = React.useState('');
+  const [shopIdLoading, setShopIdLoading] = React.useState(true);
   
   React.useEffect(() => {
     const getShopId = async () => {
       if (!user?.uid) {
         setShopId('');
+        setShopIdLoading(false);
         return;
       }
       
@@ -131,6 +133,8 @@ function MainApp() {
       } catch (error) {
         console.error('Error getting shopId:', error);
         setShopId(user?.uid || '');
+      } finally {
+        setShopIdLoading(false);
       }
     };
     
@@ -303,13 +307,20 @@ function MainApp() {
 
         {/* Main Content - Add padding bottom on mobile for bottom nav */}
         <main className="flex-1 overflow-y-auto p-6 md:p-10 custom-scroll pb-20 lg:pb-6">
+          {/* Show loading while getting shopId */}
+          {shopIdLoading && (
+            <div className="flex items-center justify-center h-full">
+              <Loader2 className="w-8 h-8 text-[#C9A84C] animate-spin" />
+            </div>
+          )}
+          
           <AnimatePresence mode="wait">
-            {activeView === 'dashboard' && <DashboardView key="dashboard" onNavigate={setActiveView} shopId={userData?.shopId || user?.uid || ''} />}
-            {activeView === 'agenda' && <AgendaView key="agenda" onNavigate={setActiveView} shopId={userData?.shopId || user?.uid || ''} />}
-            {activeView === 'barbers' && <BarbersView key="barbers" />}
-            {activeView === 'estoque' && <StockView key="estoque" onNavigate={setActiveView} shopId={userData?.shopId || user?.uid || ''} />}
-            {activeView === 'financeiro' && <FinanceiroView key="financeiro" />}
-            {activeView === 'pricing' && <PricingView key="pricing" />}
+            {!shopIdLoading && activeView === 'dashboard' && <DashboardView key="dashboard" onNavigate={setActiveView} shopId={shopId} />}
+            {!shopIdLoading && activeView === 'agenda' && <AgendaView key="agenda" onNavigate={setActiveView} shopId={shopId} />}
+            {!shopIdLoading && activeView === 'barbers' && <BarbersView key="barbers" />}
+            {!shopIdLoading && activeView === 'estoque' && <StockView key="estoque" onNavigate={setActiveView} shopId={shopId} />}
+            {!shopIdLoading && activeView === 'financeiro' && <FinanceiroView key="financeiro" />}
+            {!shopIdLoading && activeView === 'pricing' && <PricingView key="pricing" />}
             {activeView === 'ia' && (
               <IAAssistantView
                 key="ia"
