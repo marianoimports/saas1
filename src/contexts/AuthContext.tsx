@@ -37,19 +37,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsAdmin(true);
       setUserData({ role: 'admin', isAdmin: true, email: currentUser.email });
       
-      // Try to create/update user doc in background
-      try {
-        await setDoc(doc(db, 'users', currentUser.uid), {
-          uid: currentUser.uid,
-          email: currentUser.email,
-          role: 'admin',
-          isAdmin: true,
-          displayName: currentUser.displayName || 'Admin',
-          createdAt: serverTimestamp()
-        }, { merge: true });
-      } catch (e) {
-        console.log('Background doc update failed, but admin forced:', e);
-      }
+      // TEMPORARILY DISABLED FOR DEBUGGING
+      console.log('Admin doc creation DISABLED for debugging');
       
       return true;
     }

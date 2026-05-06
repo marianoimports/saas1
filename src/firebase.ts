@@ -11,6 +11,11 @@ export const auth = getAuth(app);
 export const createUserDocument = async (user: any, additionalData: any = {}) => {
   if (!user) return;
   
+  // TEMPORARILY DISABLED FOR DEBUGGING
+  console.log('createUserDocument DISABLED for debugging - user:', user.email);
+  return;
+  
+  /*
   const userRef = doc(db, 'users', user.uid);
   const snapshot = await getDocFromServer(userRef);
   
@@ -30,6 +35,7 @@ export const createUserDocument = async (user: any, additionalData: any = {}) =>
       console.error('Error creating user document:', error);
     }
   }
+  */
 };
 
 export const loginWithEmail = (email: string, password: string) => 
