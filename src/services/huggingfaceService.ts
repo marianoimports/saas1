@@ -1,6 +1,7 @@
 import { InferenceClient } from '@huggingface/inference';
 
-const HF_TOKEN = import.meta.env.VITE_HF_TOKEN || '';
+// @ts-ignore - Vite define env
+const HF_TOKEN = (import.meta as any).env?.VITE_HF_TOKEN || process.env.VITE_HF_TOKEN || '';
 
 export async function chatWithAI(message: string, context: string) {
   if (!HF_TOKEN) {

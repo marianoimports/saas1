@@ -24,6 +24,11 @@ export function subscribeToCollection<T>(
   callback: (data: T[]) => void,
   shopId: string
 ) {
+  if (!shopId || shopId === 'undefined' || shopId === 'undefined' || shopId.includes('/')) {
+    console.error('subscribeToCollection: shopId is invalid:', shopId);
+    callback([]);
+    return () => {};
+  }
   const q = query(
     collection(db, `shops/${shopId}/${path}`),
     orderBy('createdAt', 'desc')
@@ -42,6 +47,9 @@ export function subscribeToCollection<T>(
 
 // Add Item
 export async function addItem(shopId: string, path: string, data: any) {
+  if (!shopId || shopId === 'undefined' || shopId === undefined) {
+    throw new Error('addItem: shopId is invalid');
+  }
   try {
     const docRef = await addDoc(collection(db, `shops/${shopId}/${path}`), {
       ...data,
@@ -57,6 +65,9 @@ export async function addItem(shopId: string, path: string, data: any) {
 
 // Update Item
 export async function updateItem(shopId: string, path: string, id: string, data: any) {
+  if (!shopId || shopId === 'undefined' || shopId === undefined) {
+    throw new Error('updateItem: shopId is invalid');
+  }
   try {
     const docRef = doc(db, `shops/${shopId}/${path}`, id);
     await updateDoc(docRef, {
@@ -431,7 +442,7 @@ export async function createStripeCheckout(planId: string, userId: string, userE
     }
 
     // Simulate API call to Cloud Function
-    const response = await fetch('/api/create-checkout-session', {
+    const response = await fetch('/api/create-checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

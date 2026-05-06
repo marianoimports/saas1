@@ -99,8 +99,8 @@ function MainApp() {
 
   // Get shopId - ALWAYS use user.uid as fallback
   const shopId = React.useMemo(() => {
-    if (userData?.shopId) return userData.shopId;
-    if (user?.uid) return user.uid; // Direct fallback to uid
+    if (userData?.shopId && userData.shopId !== 'undefined') return userData.shopId;
+    if (user?.uid && user.uid !== 'undefined') return user.uid; // Direct fallback to uid
     return '';
   }, [userData, user]);
   
@@ -130,6 +130,7 @@ function MainApp() {
         } else {
           // Create user document if doesn't exist
           console.log('Creating user document with shopId:', user.uid);
+          const { createUserDocument } = await import('./firebase');
           await createUserDocument(user);
         }
       } catch (error) {
@@ -309,20 +310,20 @@ function MainApp() {
         {/* Main Content - Add padding bottom on mobile for bottom nav */}
         <main className="flex-1 overflow-y-auto p-6 md:p-10 custom-scroll pb-20 lg:pb-6">
           {/* Show loading while getting shopId */}
-          {(shopIdLoading || !shopId) && (
+          {(shopIdLoading || !shopId || shopId === 'undefined') && (
             <div className="flex items-center justify-center h-full">
               <Loader2 className="w-8 h-8 text-[#C9A84C] animate-spin" />
               <span className="ml-3 text-[#888]">Carregando dados da loja...</span>
             </div>
           )}
           
-          <AnimatePresence mode="wait">
-            {!shopIdLoading && shopId && activeView === 'dashboard' && <DashboardView key="dashboard" onNavigate={setActiveView} shopId={shopId} />}
-            {!shopIdLoading && shopId && activeView === 'agenda' && <AgendaView key="agenda" onNavigate={setActiveView} shopId={shopId} />}
-            {!shopIdLoading && activeView === 'barbers' && <BarbersView key="barbers" />}
-            {!shopIdLoading && shopId && activeView === 'estoque' && <StockView key="estoque" onNavigate={setActiveView} shopId={shopId} />}
-            {!shopIdLoading && activeView === 'financeiro' && <FinanceiroView key="financeiro" />}
-            {!shopIdLoading && activeView === 'pricing' && <PricingView key="pricing" />}
+           <AnimatePresence mode="wait">
+             {!shopIdLoading && shopId && activeView === 'dashboard' && <DashboardView onNavigate={setActiveView} shopId={shopId} />}
+             {!shopIdLoading && shopId && activeView === 'agenda' && <AgendaView onNavigate={setActiveView} shopId={shopId} />}
+             {!shopIdLoading && activeView === 'barbers' && <BarbersView />}
+             {!shopIdLoading && shopId && activeView === 'estoque' && <StockView onNavigate={setActiveView} shopId={shopId} />}
+             {!shopIdLoading && activeView === 'financeiro' && <FinanceiroView />}
+             {!shopIdLoading && activeView === 'pricing' && <PricingView />}
             {activeView === 'ia' && (
               <IAAssistantView
                 key="ia"
@@ -1031,8 +1032,8 @@ function DashboardView({ onNavigate, shopId }: { onNavigate: (v: View) => void, 
     // Fetch appointments for today
     const today = new Date().toISOString().split('T')[0];
     const unsubAppointments = subscribeToAppointments(shopId, (data) => {
-      const todayApps = data.filter(a => a.date === today);
-      const pending = todayApps.filter(a => a.status === 'pending' || a.status === 'confirmed').length;
+       const todayApps = data.filter((a: any) => a.date === today);
+       const pending = todayApps.filter((a: any) => a.status === 'pending' || a.status === 'confirmed').length;
       
       setUpcomingAppointments(todayApps.slice(0, 4));
       setMetrics(prev => ({
@@ -1755,6 +1756,8 @@ function PricingView() {
   const [plans, setPlans] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
   const { user } = useAuth();
+  const [pixModal, setPixModal] = React.useState<{open: boolean, brCode?: string, brCodeBase64?: string, checkoutId?: string}>({open: false});
+  const [checking, setChecking] = React.useState(false);
 
   React.useEffect(() => {
     const unsub = subscribeToPlans<any>((data) => {
@@ -1775,25 +1778,28 @@ function PricingView() {
     }
     
     try {
+      setChecking(true);
       const response = await fetch('/api/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           planId: plan.id,
           planName: plan.name,
-          amount: plan.price,
+          amount: Math.round(plan.price * 100),
           email: user.email,
         }),
       });
       
       const data = await response.json();
       if (data.success) {
-        window.location.href = data.url;
+        setPixModal({open: true, brCode: data.brCode, brCodeBase64: data.brCodeBase64, checkoutId: data.checkoutId});
       } else {
         alert('Erro ao criar checkout: ' + data.error);
       }
     } catch (error: any) {
       alert('Erro ao processar pagamento: ' + error.message);
+    } finally {
+      setChecking(false);
     }
   };
 
@@ -1894,16 +1900,23 @@ function PricingView() {
 
                 <button
                   onClick={() => handleSelectPlan(plan)}
+                  disabled={checking}
                   className={cn(
                     "w-full py-3 rounded-xl font-bold text-sm transition-all",
                     isFree 
                       ? "bg-green-500/10 border border-green-500/30 text-green-500 hover:bg-green-500/20"
                       : isPopular
                         ? "bg-[#C9A84C] text-[#0A0A0A] hover:bg-[#E8C96A] shadow-lg shadow-[#C9A84C]/20"
-                        : "bg-[#1A1A1A] border border-[#2A2A2A] text-white hover:bg-[#222]"
+                        : "bg-[#1A1A1A] border border-[#2A2A2A] text-white hover:bg-[#222]",
+                    checking && "opacity-50 cursor-not-allowed"
                   )}
                 >
-                  {isFree ? (
+                  {checking ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Processando...
+                    </span>
+                  ) : isFree ? (
                     <span className="flex items-center justify-center gap-2">
                       <Gift className="w-4 h-4" />
                       Começar Grátis
@@ -1928,6 +1941,35 @@ function PricingView() {
           Fale com Vendas
         </button>
       </div>
+
+      {pixModal.open && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50" onClick={() => setPixModal({open: false})}>
+          <div className="bg-[#141414] border border-[#2A2A2A] rounded-2xl p-8 max-w-md w-full mx-4" onClick={e => e.stopPropagation()}>
+            <h3 className="text-xl font-bold text-white mb-4 text-center">Pague com PIX</h3>
+            <div className="flex flex-col items-center gap-4">
+              {pixModal.brCodeBase64 && (
+                <img src={pixModal.brCodeBase64} alt="QR Code PIX" className="w-48 h-48 bg-white p-2 rounded-lg" />
+              )}
+              <p className="text-[#888] text-sm text-center">Escaneie o QR Code ou copie o código abaixo</p>
+              <div className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg p-3">
+                <code className="text-[#C9A84C] text-xs break-all">{pixModal.brCode}</code>
+              </div>
+              <button
+                onClick={() => navigator.clipboard.writeText(pixModal.brCode || '')}
+                className="bg-[#1A1A1A] border border-[#2A2A2A] text-white px-4 py-2 rounded-lg text-sm hover:bg-[#222] transition-all"
+              >
+                Copiar Código PIX
+              </button>
+              <button
+                onClick={() => setPixModal({open: false})}
+                className="text-[#888] text-sm hover:text-white transition-all"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }

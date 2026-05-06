@@ -12,17 +12,19 @@ export default async function handler(req: Request) {
   try {
     const { planId, planName, amount, email } = await req.json();
 
-    const checkout = await abacate.checkouts.create({
-      items: [{ id: planId, quantity: 1 }],
-      customerId: email,
-      returnUrl: `${process.env.URL || 'https://seu-site.vercel.app'}/dashboard`,
-      completionUrl: `${process.env.URL || 'https://seu-site.vercel.app'}/dashboard?success=true`,
+    const pix = await abacate.pix.create({
+      method: "PIX",
+      data: {
+        amount: amount, // valor em centavos
+      }
     });
 
     return new Response(JSON.stringify({ 
       success: true, 
-      url: checkout.data.url,
-      checkoutId: checkout.data.id 
+      checkoutId: pix.id,
+      brCode: pix.brCode,
+      brCodeBase64: pix.brCodeBase64,
+      expiresAt: pix.expiresAt
     }), {
       headers: { 'Content-Type': 'application/json' },
     });

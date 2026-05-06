@@ -35,7 +35,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (currentUser.email === 'michaelmarianodasilva81@gmail.com') {
       console.log('ADMIN: Email matches, forcing admin = true');
       setIsAdmin(true);
-      setUserData({ role: 'admin', isAdmin: true, email: currentUser.email });
+      setUserData({ role: 'admin', isAdmin: true, email: currentUser.email, shopId: currentUser.uid });
       
       // TEMPORARILY DISABLED FOR DEBUGGING
       console.log('Admin doc creation DISABLED for debugging');
@@ -70,8 +70,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
         if (userDoc.exists()) {
           const data = userDoc.data();
-          setUserData(data);
-          console.log('User data loaded with shopId:', data.shopId || currentUser.uid);
+          // Ensure shopId is valid
+          const validShopId = data.shopId && data.shopId !== 'undefined' ? data.shopId : currentUser.uid;
+          setUserData({ ...data, shopId: validShopId });
+          console.log('User data loaded with shopId:', validShopId);
         } else {
           // If user doc doesn't exist yet, use uid as shopId
           setUserData({ shopId: currentUser.uid, email: currentUser.email });
