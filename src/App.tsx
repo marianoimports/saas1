@@ -814,7 +814,7 @@ function AdminLayout({ user, logout, activeTab, setActiveTab }: any) {
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-[#888] uppercase tracking-widest mb-2">Versão</label>
-                    <p className="text-sm text-[#eee]">Kernel Barber SaaS v2.0.0 (2026)</p>
+                    <p className="text-sm text-[#eee]">KERNEL BARBER SHOPPER v2.0.0 (2026)</p>
                   </div>
                 </div>
               </div>
@@ -863,7 +863,7 @@ function LoginScreen() {
         <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-[#C9A84C]/5 rounded-full blur-3xl" />
         
         <div className="relative">
-          <img src="/logo.png" alt="Kernel Barber" className="w-20 h-20 rounded-3xl object-cover mx-auto mb-8 shadow-2xl shadow-[#C9A84C]/20" />
+          <img src="/logo.png" alt="KERNEL BARBER SHOPPER" className="w-20 h-20 rounded-3xl object-cover mx-auto mb-8 shadow-2xl shadow-[#C9A84C]/20" />
           <h1 className="text-3xl font-display font-bold text-white mb-3 tracking-tight">KERNEL BARBER SHOPPER</h1>
           <p className="text-[#888] text-sm mb-10 font-medium">A gestão de luxo para sua barbearia,<br />agora com inteligência artificial.</p>
           
