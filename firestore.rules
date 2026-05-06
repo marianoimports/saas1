@@ -1,9 +1,31 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // TEMPORARILY OPEN FOR DEBUGGING - WILL RESTRICT AFTER FIX
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+    // Allow authenticated users to read/write their own shop data
+    match /shops/{shopId} {
+      allow read, write: if request.auth != null && request.auth.uid == shopId;
+      
+      // Allow access to subcollections (appointments, stock, etc.)
+      match /{subcollection}/{document} {
+        allow read, write: if request.auth != null;
+      }
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Plans - read allowed for all authenticated users
+    match /plans/{planId} {
+      allow read: if request.auth != null;
+      allow write: if false; // Only via admin
+    }
+    
+    // Settings - read only
+    match /settings/{doc} {
+      allow read: if true;
+      allow write: if false;
     }
   }
 }

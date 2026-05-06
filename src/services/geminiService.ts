@@ -11,7 +11,7 @@ export async function chatWithAI(message: string, context: string) {
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-pro",
       contents: `
         You are the AI assistant for "Kernel Barber Shopper", a luxury barber shop management SaaS.
         Your goal is to help the shop manager (the user) with agenda, inventory, and financial insights.
