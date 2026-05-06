@@ -869,14 +869,7 @@ function LoginScreen() {
         <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-[#C9A84C]/5 rounded-full blur-3xl" />
         
         <div className="relative">
-          <div className="w-20 h-20 bg-[#C9A84C] rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-[#C9A84C]/20 border-b-4 border-[#9A7A30]">
-            <svg viewBox="0 0 24 24" fill="none" stroke="#0A0A0A" strokeWidth="2.5" className="w-10 h-10">
-              <path d="M6 2l1.5 5.5L12 5l4.5 2.5L18 2" strokeLinecap="round" />
-              <path d="M6 22l1.5-5.5L12 19l4.5-2.5L18 22" strokeLinecap="round" />
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <circle cx="12" cy="12" r="2.5" />
-            </svg>
-          </div>
+          <img src="/logo.png" alt="Kernel Barber" className="w-20 h-20 rounded-3xl object-cover mx-auto mb-8 shadow-2xl shadow-[#C9A84C]/20" />
           <h1 className="text-3xl font-display font-bold text-white mb-3 tracking-tight">Kernel Barber</h1>
           <p className="text-[#888] text-sm mb-10 font-medium">A gestão de luxo para sua barbearia,<br />agora com inteligência artificial.</p>
           
