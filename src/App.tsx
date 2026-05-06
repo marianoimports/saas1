@@ -147,8 +147,37 @@ function MainApp() {
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-white font-sans selection:bg-[#C9A84C] selection:text-black">
-      {/* Top Navigation */}
-      <nav className="h-16 bg-[#141414] border-b border-[#2A2A2A] flex items-center px-6 gap-6 sticky top-0 z-50">
+      {/* Mobile Bottom Navigation */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-[#141414] border-t border-[#2A2A2A] flex items-center justify-around z-50 px-2">
+        {navItems.slice(0, 5).map((item) => (
+          <button
+            key={item.id}
+            onClick={() => setActiveView(item.id as View)}
+            className={cn(
+              "flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all",
+              activeView === item.id
+                ? "text-[#C9A84C]"
+                : "text-[#888]"
+            )}
+          >
+            <item.icon className="w-5 h-5" />
+            <span className="text-[9px] font-bold">{item.label}</span>
+          </button>
+        ))}
+        <button
+          onClick={() => setActiveView('admin')}
+          className={cn(
+            "flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all",
+            activeView === 'admin' ? "text-[#E8C96A]" : "text-[#888]"
+          )}
+        >
+          <Settings className="w-5 h-5" />
+          <span className="text-[9px] font-bold">Config</span>
+        </button>
+      </nav>
+
+      {/* Desktop Top Navigation */}
+      <nav className="h-16 bg-[#141414] border-b border-[#2A2A2A] hidden lg:flex items-center px-6 gap-6 sticky top-0 z-50">
         <div className="flex items-center gap-3">
           <img src="/logo.png" alt="Logo" className="w-10 h-10 rounded-xl object-cover" />
           <span className="text-[#C9A84C] font-display font-bold tracking-tight text-lg">KERNEL BARBER SHOPPER</span>
@@ -171,23 +200,23 @@ function MainApp() {
           ))}
         </div>
 
-        <div className="flex items-center gap-3 ml-4 pl-4 border-l border-[#2A2A2A]">
-           <button
+        <div className="flex items-center gap-3 ml-auto md:ml-0">
+          <button
             onClick={logout}
             className="w-10 h-10 rounded-full bg-[#1A1A1A] border border-[#2A2A2A] flex items-center justify-center text-[#888] hover:text-red-500 hover:border-red-500/30 transition-all"
-           >
-             <LogOut className="w-4 h-4" />
-           </button>
-           <div className="hidden sm:block text-right">
-             <p className="text-[10px] text-[#888] font-bold uppercase tracking-widest leading-none mb-1">Logado como</p>
-             <p className="text-xs font-bold text-white leading-none">{user?.displayName?.split(' ')[0] || 'Usuário'}</p>
-           </div>
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+          <div className="hidden sm:block text-right">
+            <p className="text-[10px] text-[#888] font-bold uppercase tracking-widest leading-none mb-1">Logado como</p>
+            <p className="text-xs font-bold text-white leading-none">{user?.displayName?.split(' ')[0] || 'Usuário'}</p>
+          </div>
         </div>
       </nav>
 
-      <div className="flex h-[calc(100vh-64px)]">
-        {/* Sidebar */}
-        <aside className="w-64 bg-[#141414] border-r border-[#2A2A2A] py-8 hidden lg:flex flex-col gap-8 flex-shrink-0">
+      <div className="flex" style={{ height: 'calc(100vh - 64px)' }}>
+        {/* Sidebar - Desktop Only */}
+        <aside className="w-64 bg-[#141414] border-r border-[#2A2A2A] py-8 hidden lg:flex flex-col gap-8 flex-shrink-0 overflow-y-auto">
           <div className="px-6 flex flex-col gap-2">
             <p className="text-[10px] text-[#888] uppercase tracking-[2px] font-bold mb-4 opacity-50">Menu principal</p>
             {navItems.map((item) => (
@@ -195,7 +224,7 @@ function MainApp() {
                 key={item.id}
                 onClick={() => setActiveView(item.id as View)}
                 className={cn(
-                  "flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all relative group font-medium",
+                  "flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all relative font-medium",
                   activeView === item.id
                     ? "text-[#C9A84C] bg-[#C9A84C]/10 shadow-[inset_2px_0_0_0_#C9A84C]"
                     : "text-[#888] hover:text-[#C9A84C] hover:bg-[#C9A84C]/5"
@@ -205,8 +234,8 @@ function MainApp() {
                 <span>{item.label}</span>
                 {item.badge && (
                   <span className={cn(
-                    "ml-auto text-[10px] font-black px-2 py-0.5 rounded-full",
-                    item.badgeColor || "bg-[#C9A84C] text-[#0A0A0A]"
+                    "ml-auto text-[9px] font-bold px-2 py-0.5 rounded-full",
+                    item.badgeColor || "bg-[#C9A84C]/20 text-[#C9A84C]"
                   )}>
                     {item.badge}
                   </span>
@@ -214,50 +243,26 @@ function MainApp() {
               </button>
             ))}
 
-            {isAdminFinal ? (
+            {/* Admin Button - Only show if admin */}
+            {isAdminFinal && (
               <button
                 onClick={() => setActiveView('admin')}
                 className={cn(
-                  "flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all relative group font-bold mt-4",
+                  "flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all relative font-bold mt-4",
                   activeView === 'admin'
                     ? "text-[#E8C96A] bg-[#C9A84C]/20 shadow-[inset_2px_0_0_0_#C9A84C]"
                     : "text-[#C9A84C] border border-[#C9A84C]/20 hover:bg-[#C9A84C]/10"
                 )}
               >
-                <ShieldCheck className="w-4 h-4" />
-                <span>Painel SaaS</span>
+                <ShieldCheck className={cn("w-4 h-4", activeView === 'admin' ? "text-[#E8C96A]" : "")} />
+                <span>Admin SaaS</span>
               </button>
-            ) : user?.email === 'michaelmarianodasilva81@gmail.com' ? (
-              <button
-                onClick={async () => {
-                  try {
-                    const { setUserAsAdmin } = await import('./services/dbService');
-                    await setUserAsAdmin(user?.uid || '');
-                    await checkAdminStatus(user);
-                    window.location.reload();
-                  } catch (error) {
-                    console.error('Error setting admin:', error);
-                    alert('Erro ao tornar admin. Verifique o console.');
-                  }
-                }}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all relative group font-bold mt-4 text-red-500 border border-red-500/30 hover:bg-red-500/10 animate-pulse"
-              >
-                <ShieldCheck className="w-4 h-4" />
-                <span>Tornar Admin</span>
-              </button>
-            ) : null}
-          </div>
-
-          <div className="px-6 flex flex-col gap-2 mt-auto pb-6">
-            <button className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-[#888] hover:text-[#C9A84C] hover:bg-[#C9A84C]/5 transition-all outline-none">
-              <Settings className="w-4 h-4" />
-              <span>Configurações</span>
-            </button>
+            )}
           </div>
         </aside>
 
-        {/* Main Content */}
-        <main className="flex-1 overflow-y-auto p-6 md:p-10 custom-scroll">
+        {/* Main Content - Add padding bottom on mobile for bottom nav */}
+        <main className="flex-1 overflow-y-auto p-6 md:p-10 custom-scroll pb-20 lg:pb-6">
           <AnimatePresence mode="wait">
             {activeView === 'dashboard' && <DashboardView key="dashboard" onNavigate={setActiveView} shopId={userData?.shopId || ''} />}
             {activeView === 'agenda' && <AgendaView key="agenda" onNavigate={setActiveView} shopId={userData?.shopId || ''} />}
