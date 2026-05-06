@@ -97,25 +97,45 @@ function MainApp() {
   const chatEndRef = React.useRef<HTMLDivElement>(null);
   const [activeAdminTab, setActiveAdminTab] = React.useState<'overview' | 'shops' | 'users' | 'plans' | 'settings'>('overview');
 
-  // Ensure shopId is always available
-  const shopId = userData?.shopId || user?.uid || '';
+  // Get shopId dynamically
+  const [shopId, setShopId] = React.useState('');
   
   React.useEffect(() => {
-    // If user is logged in but shopId is missing, update it
-    if (user?.uid && !userData?.shopId) {
-      const updateShopId = async () => {
-        try {
-          const { doc, setDoc, serverTimestamp } = await import('firebase/firestore');
-          const { db } = await import('./firebase');
-          await setDoc(doc(db, 'users', user.uid), { shopId: user.uid }, { merge: true });
-          console.log('Updated user with shopId:', user.uid);
-        } catch (error) {
-          console.error('Error updating shopId:', error);
+    const getShopId = async () => {
+      if (!user?.uid) {
+        setShopId('');
+        return;
+      }
+      
+      try {
+        const { doc, getDocFromServer } = await import('firebase/firestore');
+        const { db } = await import('./firebase');
+        const userRef = doc(db, 'users', user.uid);
+        const snapshot = await getDocFromServer(userRef);
+        
+        if (snapshot.exists()) {
+          const data = snapshot.data();
+          if (data.shopId) {
+            setShopId(data.shopId);
+          } else {
+            // Create shopId if missing
+            const { setDoc, serverTimestamp } = await import('firebase/firestore');
+            await setDoc(userRef, { shopId: user.uid, updatedAt: serverTimestamp() }, { merge: true });
+            setShopId(user.uid);
+          }
+        } else {
+          // Create user document if doesn't exist
+          await createUserDocument(user);
+          setShopId(user.uid);
         }
-      };
-      updateShopId();
-    }
-  }, [user, userData]);
+      } catch (error) {
+        console.error('Error getting shopId:', error);
+        setShopId(user?.uid || '');
+      }
+    };
+    
+    getShopId();
+  }, [user]);
 
   React.useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
