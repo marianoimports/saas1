@@ -72,20 +72,13 @@ function MainApp() {
   // SIMPLE: Force admin true for this specific email - nothing else matters
   const isAdminFinal = user?.email === 'michaelmarianodasilva81@gmail.com' ? true : (isAdmin || false);
   
-  React.useEffect(() => {
-    if (user?.email === 'michaelmarianodasilva81@gmail.com') {
-      checkAdminStatus(user).catch(() => {});
+  const [activeView, setActiveView] = React.useState<View>(() => {
+    if (typeof window !== 'undefined' && localStorage.getItem('redirectToPricing')) {
+      localStorage.removeItem('redirectToPricing');
+      return 'pricing';
     }
-  }, [user]);
-  
-  // Auto-redirect admin to admin panel
-  React.useEffect(() => {
-    if (isAdminFinal && user) {
-      setActiveView('admin');
-    }
-  }, [isAdminFinal, user]);
-  
-  const [activeView, setActiveView] = React.useState<View>('dashboard');
+    return 'dashboard';
+  });
   const [messages, setMessages] = React.useState<Message[]>([
     {
       role: 'ia',
@@ -848,6 +841,7 @@ function LoginScreen() {
     try {
       if (isRegistering) {
         await register(email, password);
+        localStorage.setItem('redirectToPricing', 'true');
       } else {
         await login(email, password);
       }
@@ -1435,13 +1429,33 @@ function PricingView() {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
   };
 
-  const handleSelectPlan = (plan: any) => {
+  const handleSelectPlan = async (plan: any) => {
     if (!user) {
       alert('Faça login para assinar um plano!');
       return;
     }
-    // Here you would integrate with a payment gateway like Stripe
-    alert(`Plano ${plan.name} selecionado! Integração com pagamento em breve.`);
+    
+    try {
+      const response = await fetch('/api/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          planId: plan.id,
+          planName: plan.name,
+          amount: plan.price,
+          email: user.email,
+        }),
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        window.location.href = data.url;
+      } else {
+        alert('Erro ao criar checkout: ' + data.error);
+      }
+    } catch (error: any) {
+      alert('Erro ao processar pagamento: ' + error.message);
+    }
   };
 
   return (
