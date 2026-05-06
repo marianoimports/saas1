@@ -264,10 +264,10 @@ function MainApp() {
         {/* Main Content - Add padding bottom on mobile for bottom nav */}
         <main className="flex-1 overflow-y-auto p-6 md:p-10 custom-scroll pb-20 lg:pb-6">
           <AnimatePresence mode="wait">
-            {activeView === 'dashboard' && <DashboardView key="dashboard" onNavigate={setActiveView} shopId={userData?.shopId || ''} />}
-            {activeView === 'agenda' && <AgendaView key="agenda" onNavigate={setActiveView} shopId={userData?.shopId || ''} />}
+            {activeView === 'dashboard' && <DashboardView key="dashboard" onNavigate={setActiveView} shopId={userData?.shopId || user?.uid || ''} />}
+            {activeView === 'agenda' && <AgendaView key="agenda" onNavigate={setActiveView} shopId={userData?.shopId || user?.uid || ''} />}
             {activeView === 'barbers' && <BarbersView key="barbers" />}
-            {activeView === 'estoque' && <StockView key="estoque" onNavigate={setActiveView} shopId={userData?.shopId || ''} />}
+            {activeView === 'estoque' && <StockView key="estoque" onNavigate={setActiveView} shopId={userData?.shopId || user?.uid || ''} />}
             {activeView === 'financeiro' && <FinanceiroView key="financeiro" />}
             {activeView === 'pricing' && <PricingView key="pricing" />}
             {activeView === 'ia' && (

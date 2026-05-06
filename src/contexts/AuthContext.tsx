@@ -65,6 +65,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (currentUser) {
         // Create user document if it doesn't exist
         await createUserDocument(currentUser);
+        // Fetch user data to get shopId
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        if (userDoc.exists()) {
+          setUserData(userDoc.data());
+        }
         await checkAdminStatus(currentUser.uid);
       } else {
         setIsAdmin(false);
