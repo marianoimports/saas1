@@ -38,7 +38,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
-import { chatWithAI } from './services/geminiService';
+import { chatWithAI } from './services/huggingfaceService';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { getDocs, collection } from 'firebase/firestore';
 import { db } from './firebase';
