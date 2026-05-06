@@ -59,7 +59,9 @@ import {
   subscribeToAppointments,
   addAppointment,
   updateAppointment,
-  subscribeToCollection
+  subscribeToCollection,
+  addItem,
+  updateItem
 } from './services/dbService';
 
 type View = 'dashboard' | 'agenda' | 'barbers' | 'estoque' | 'financeiro' | 'ia' | 'admin' | 'pricing' | 'setup';
