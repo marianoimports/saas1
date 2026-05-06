@@ -308,9 +308,10 @@ function MainApp() {
         {/* Main Content - Add padding bottom on mobile for bottom nav */}
         <main className="flex-1 overflow-y-auto p-6 md:p-10 custom-scroll pb-20 lg:pb-6">
           {/* Show loading while getting shopId */}
-          {shopIdLoading && (
+          {(shopIdLoading || !shopId) && (
             <div className="flex items-center justify-center h-full">
               <Loader2 className="w-8 h-8 text-[#C9A84C] animate-spin" />
+              <span className="ml-3 text-[#888]">Carregando dados da loja...</span>
             </div>
           )}
           
