@@ -97,6 +97,26 @@ function MainApp() {
   const chatEndRef = React.useRef<HTMLDivElement>(null);
   const [activeAdminTab, setActiveAdminTab] = React.useState<'overview' | 'shops' | 'users' | 'plans' | 'settings'>('overview');
 
+  // Ensure shopId is always available
+  const shopId = userData?.shopId || user?.uid || '';
+  
+  React.useEffect(() => {
+    // If user is logged in but shopId is missing, update it
+    if (user?.uid && !userData?.shopId) {
+      const updateShopId = async () => {
+        try {
+          const { doc, setDoc, serverTimestamp } = await import('firebase/firestore');
+          const { db } = await import('./firebase');
+          await setDoc(doc(db, 'users', user.uid), { shopId: user.uid }, { merge: true });
+          console.log('Updated user with shopId:', user.uid);
+        } catch (error) {
+          console.error('Error updating shopId:', error);
+        }
+      };
+      updateShopId();
+    }
+  }, [user, userData]);
+
   React.useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
