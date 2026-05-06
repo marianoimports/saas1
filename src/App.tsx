@@ -260,7 +260,7 @@ function MainApp() {
             {activeView === 'dashboard' && <DashboardView key="dashboard" onNavigate={setActiveView} shopId={userData?.shopId || ''} />}
             {activeView === 'agenda' && <AgendaView key="agenda" onNavigate={setActiveView} shopId={userData?.shopId || ''} />}
             {activeView === 'barbers' && <BarbersView key="barbers" />}
-            {activeView === 'estoque' && <StockView key="estoque" onNavigate={setActiveView} />}
+            {activeView === 'estoque' && <StockView key="estoque" onNavigate={setActiveView} shopId={userData?.shopId || ''} />}
             {activeView === 'financeiro' && <FinanceiroView key="financeiro" />}
             {activeView === 'pricing' && <PricingView key="pricing" />}
             {activeView === 'ia' && (
@@ -1310,15 +1310,35 @@ function BarbersView() {
   );
 }
 
-function StockView({ onNavigate }: { onNavigate: (v: View) => void }) {
-  const stock = [
-    { name: 'Pomada Modeladora Pro', cat: 'Finalizador', qty: '2 un', st: 'critical' },
-    { name: 'Gel de Barba Hidratante', cat: 'Barba', qty: '5 un', st: 'low' },
-    { name: 'Toalhas Descartáveis', cat: 'Descartável', qty: '12 un', st: 'low' },
-    { name: 'Shampoo Profissional', cat: 'Cabelo', qty: '28 un', st: 'ok' },
-    { name: 'Lâminas de Barbear', cat: 'Descartável', qty: '45 un', st: 'ok' },
-    { name: 'Óleo de Barba Premium', cat: 'Barba', qty: '18 un', st: 'ok' },
-  ];
+function StockView({ onNavigate, shopId }: { onNavigate: (v: View) => void, shopId: string }) {
+  const [stock, setStock] = React.useState<any[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [search, setSearch] = React.useState('');
+  const [filter, setFilter] = React.useState<'all' | 'low'>('all');
+
+  React.useEffect(() => {
+    if (!shopId) return;
+    const unsub = subscribeToCollection(`${shopId}/stock`, (data) => {
+      setStock(data);
+      setLoading(false);
+    });
+    return () => unsub();
+  }, [shopId]);
+
+  const filteredStock = stock.filter(item => {
+    if (filter === 'low') return item.qty <= 5;
+    if (search) return item.name.toLowerCase().includes(search.toLowerCase());
+    return true;
+  });
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir este item?')) return;
+    try {
+      await updateItem(shopId, 'stock', id, { active: false });
+    } catch (error) {
+      console.error('Error deleting item:', error);
+    }
+  };
 
   return (
     <motion.div 
@@ -1328,7 +1348,20 @@ function StockView({ onNavigate }: { onNavigate: (v: View) => void }) {
     >
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-[#C9A84C]">Controle de Estoque</h1>
-        <button className="bg-[#C9A84C] text-[#0A0A0A] px-5 py-2.5 rounded-xl font-bold text-sm">Novo Item</button>
+        <button 
+          onClick={() => {
+            const name = prompt('Nome do produto:');
+            if (!name) return;
+            const cat = prompt('Categoria:') || 'Geral';
+            const qty = parseInt(prompt('Quantidade:') || '0');
+            if (!isNaN(qty)) {
+              addItem(shopId, 'stock', { name, cat, qty, active: true });
+            }
+          }}
+          className="bg-[#C9A84C] text-[#0A0A0A] px-5 py-2.5 rounded-xl font-bold text-sm"
+        >
+          Novo Item
+        </button>
       </div>
 
       <div className="flex gap-3 items-center">
@@ -1337,12 +1370,18 @@ function StockView({ onNavigate }: { onNavigate: (v: View) => void }) {
           <input 
             type="text" 
             placeholder="Pesquisar produto..." 
-            className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl pl-12 pr-4 py-3 text-sm focus:outline-none focus:border-[#C9A84C] transition-all"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl pl-12 pr-4 py-3 text-sm focus:outline-none focus:border-[#C9A84C] transition-all text-white"
           />
         </div>
-        <select className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl px-4 py-3 text-sm focus:outline-none appearance-none cursor-pointer">
-          <option>Todos os itens</option>
-          <option>Estoque baixo</option>
+        <select 
+          value={filter}
+          onChange={(e) => setFilter(e.target.value as any)}
+          className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl px-4 py-3 text-sm focus:outline-none appearance-none cursor-pointer text-white"
+        >
+          <option value="all">Todos os itens</option>
+          <option value="low">Estoque baixo</option>
         </select>
       </div>
 
@@ -1354,12 +1393,21 @@ function StockView({ onNavigate }: { onNavigate: (v: View) => void }) {
           <div className="text-right">Ação</div>
         </div>
         <div className="divide-y divide-[#2A2A2A]">
-          {stock.map((item, i) => (
-             <div key={i} className="grid grid-cols-4 p-4 items-center text-sm hover:bg-[#2A2A2A]/20 transition-all">
+          {loading ? (
+            <div className="p-8 text-center text-[#888]">
+              <Loader2 className="w-6 h-6 animate-spin inline" />
+            </div>
+          ) : filteredStock.length === 0 ? (
+            <div className="p-8 text-center text-[#888] text-sm">
+              Nenhum item encontrado
+            </div>
+          ) : (
+            filteredStock.map((item) => (
+             <div key={item.id} className="grid grid-cols-4 p-4 items-center text-sm hover:bg-[#2A2A2A]/20 transition-all">
                 <div className="text-[#eee] flex items-center gap-3">
                   <div className={cn(
                     "w-2 h-2 rounded-full",
-                    item.st === 'critical' ? 'bg-red-500' : item.st === 'low' ? 'bg-orange-500' : 'bg-green-500'
+                    item.qty <= 2 ? 'bg-red-500' : item.qty <= 5 ? 'bg-orange-500' : 'bg-green-500'
                   )} />
                   {item.name}
                 </div>
@@ -1367,25 +1415,32 @@ function StockView({ onNavigate }: { onNavigate: (v: View) => void }) {
                 <div className="flex justify-center">
                   <span className={cn(
                     "px-3 py-1 rounded-lg font-bold text-[11px]",
-                    item.st === 'critical' ? 'bg-red-500/10 text-red-500' : item.st === 'low' ? 'bg-orange-500/10 text-orange-500' : 'bg-green-500/10 text-green-500'
+                    item.qty <= 2 ? 'bg-red-500/10 text-red-500' : item.qty <= 5 ? 'bg-orange-500/10 text-orange-500' : 'bg-green-500/10 text-green-500'
                   )}>
-                    {item.qty}
+                    {item.qty} un
                   </span>
                 </div>
                 <div className="text-right">
-                  <button className="text-[#C9A84C] hover:underline text-xs font-bold">Gerenciar</button>
+                  <button 
+                    onClick={() => handleDelete(item.id)}
+                    className="text-red-500 hover:underline text-xs font-bold"
+                  >
+                    Excluir
+                  </button>
                 </div>
              </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 
       <div className="text-center py-4">
         <button 
            onClick={() => onNavigate('ia')}
-           className="bg-[#C9A84C] text-[#0A0A0A] px-6 py-3 rounded-xl font-bold text-sm shadow-xl shadow-[#C9A84C]/5"
+           className="bg-[#C9A84C]/10 text-[#C9A84C] border border-[#C9A84C]/20 px-6 py-3 rounded-xl font-bold text-sm hover:bg-[#C9A84C]/20 transition-all flex items-center justify-center gap-2 mx-auto"
         >
-          Analisar Estoque com IA ↗
+          <Bot className="w-4 h-4" />
+          Analisar Estoque com IA
         </button>
       </div>
     </motion.div>
