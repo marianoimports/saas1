@@ -145,7 +145,7 @@ function MainApp() {
       <nav className="h-16 bg-[#141414] border-b border-[#2A2A2A] flex items-center px-6 gap-6 sticky top-0 z-50">
         <div className="flex items-center gap-3">
           <img src="/logo.png" alt="Logo" className="w-10 h-10 rounded-xl object-cover" />
-          <span className="text-[#C9A84C] font-display font-bold tracking-tight text-lg">Kernel Barber</span>
+          <span className="text-[#C9A84C] font-display font-bold tracking-tight text-lg">KERNEL BARBER SHOPPER</span>
         </div>
 
         <div className="hidden md:flex items-center gap-1 ml-auto">
@@ -395,7 +395,7 @@ function AdminLayout({ user, logout, activeTab, setActiveTab }: any) {
         <div className="flex items-center gap-3">
           <img src="/logo.png" alt="Logo" className="w-10 h-10 rounded-xl object-cover" />
           <div>
-            <span className="text-white font-display font-bold tracking-tight text-lg">Kernel Barber</span>
+            <span className="text-white font-display font-bold tracking-tight text-lg">KERNEL BARBER SHOPPER</span>
             <span className="text-[#C9A84C] text-xs font-bold ml-2 px-2 py-1 bg-[#C9A84C]/10 rounded-md">SaaS Admin</span>
           </div>
         </div>
@@ -864,7 +864,7 @@ function LoginScreen() {
         
         <div className="relative">
           <img src="/logo.png" alt="Kernel Barber" className="w-20 h-20 rounded-3xl object-cover mx-auto mb-8 shadow-2xl shadow-[#C9A84C]/20" />
-          <h1 className="text-3xl font-display font-bold text-white mb-3 tracking-tight">Kernel Barber</h1>
+          <h1 className="text-3xl font-display font-bold text-white mb-3 tracking-tight">KERNEL BARBER SHOPPER</h1>
           <p className="text-[#888] text-sm mb-10 font-medium">A gestão de luxo para sua barbearia,<br />agora com inteligência artificial.</p>
           
           <form onSubmit={handleSubmit} className="space-y-4">
