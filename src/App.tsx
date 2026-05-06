@@ -1315,11 +1315,13 @@ function StockView({ onNavigate, shopId }: { onNavigate: (v: View) => void, shop
   const [loading, setLoading] = React.useState(true);
   const [search, setSearch] = React.useState('');
   const [filter, setFilter] = React.useState<'all' | 'low'>('all');
+  const [showAddModal, setShowAddModal] = React.useState(false);
+  const [newItem, setNewItem] = React.useState({ name: '', cat: '', qty: '', price: '' });
 
   React.useEffect(() => {
     if (!shopId) return;
     const unsub = subscribeToCollection(`${shopId}/stock`, (data) => {
-      setStock(data);
+      setStock(data.filter((item: any) => item.active !== false));
       setLoading(false);
     });
     return () => unsub();
@@ -1330,6 +1332,23 @@ function StockView({ onNavigate, shopId }: { onNavigate: (v: View) => void, shop
     if (search) return item.name.toLowerCase().includes(search.toLowerCase());
     return true;
   });
+
+  const handleAddItem = async () => {
+    if (!newItem.name || !newItem.qty) return;
+    try {
+      await addItem(shopId, 'stock', {
+        name: newItem.name,
+        cat: newItem.cat || 'Geral',
+        qty: parseInt(newItem.qty),
+        price: parseFloat(newItem.price) || 0,
+        active: true
+      });
+      setNewItem({ name: '', cat: '', qty: '', price: '' });
+      setShowAddModal(false);
+    } catch (error) {
+      console.error('Error adding item:', error);
+    }
+  };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Tem certeza que deseja excluir este item?')) return;
@@ -1349,18 +1368,10 @@ function StockView({ onNavigate, shopId }: { onNavigate: (v: View) => void, shop
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-[#C9A84C]">Controle de Estoque</h1>
         <button 
-          onClick={() => {
-            const name = prompt('Nome do produto:');
-            if (!name) return;
-            const cat = prompt('Categoria:') || 'Geral';
-            const qty = parseInt(prompt('Quantidade:') || '0');
-            if (!isNaN(qty)) {
-              addItem(shopId, 'stock', { name, cat, qty, active: true });
-            }
-          }}
-          className="bg-[#C9A84C] text-[#0A0A0A] px-5 py-2.5 rounded-xl font-bold text-sm"
+          onClick={() => setShowAddModal(true)}
+          className="bg-[#C9A84C] text-[#0A0A0A] px-5 py-2.5 rounded-xl font-bold text-sm hover:scale-105 transition-all shadow-lg shadow-[#C9A84C]/20"
         >
-          Novo Item
+          <Plus className="w-4 h-4 inline mr-2" /> Novo Item
         </button>
       </div>
 
@@ -1433,7 +1444,87 @@ function StockView({ onNavigate, shopId }: { onNavigate: (v: View) => void, shop
           )}
         </div>
       </div>
+      
+      {/* Add Item Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-3xl p-8 max-w-md w-full shadow-2xl"
+          >
+            <h2 className="text-xl font-bold text-[#C9A84C] mb-6">Adicionar Novo Produto</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="text-[#888] text-xs font-bold uppercase tracking-wider mb-2 block">Nome do Produto</label>
+                <input
+                  type="text"
+                  placeholder="Ex: Pomada Modeladora"
+                  value={newItem.name}
+                  onChange={(e) => setNewItem({...newItem, name: e.target.value})}
+                  className="w-full bg-[#141414] border border-[#2A2A2A] rounded-xl px-4 py-3 text-sm text-white placeholder-[#555] focus:outline-none focus:border-[#C9A84C]"
+                />
+              </div>
+              
+              <div>
+                <label className="text-[#888] text-xs font-bold uppercase tracking-wider mb-2 block">Categoria</label>
+                <select
+                  value={newItem.cat}
+                  onChange={(e) => setNewItem({...newItem, cat: e.target.value})}
+                  className="w-full bg-[#141414] border border-[#2A2A2A] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#C9A84C] appearance-none"
+                >
+                  <option value="">Selecione...</option>
+                  <option value="Finalizador">Finalizador</option>
+                  <option value="Barba">Barba</option>
+                  <option value="Cabelo">Cabelo</option>
+                  <option value="Descartável">Descartável</option>
+                  <option value="Geral">Geral</option>
+                </select>
+              </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[#888] text-xs font-bold uppercase tracking-wider mb-2 block">Quantidade</label>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={newItem.qty}
+                    onChange={(e) => setNewItem({...newItem, qty: e.target.value})}
+                    className="w-full bg-[#141414] border border-[#2A2A2A] rounded-xl px-4 py-3 text-sm text-white placeholder-[#555] focus:outline-none focus:border-[#C9A84C]"
+                  />
+                </div>
+                <div>
+                  <label className="text-[#888] text-xs font-bold uppercase tracking-wider mb-2 block">Preço (R$)</label>
+                  <input
+                    type="number"
+                    placeholder="0.00"
+                    value={newItem.price}
+                    onChange={(e) => setNewItem({...newItem, price: e.target.value})}
+                    className="w-full bg-[#141414] border border-[#2A2A2A] rounded-xl px-4 py-3 text-sm text-white placeholder-[#555] focus:outline-none focus:border-[#C9A84C]"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-8">
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="flex-1 py-3 rounded-xl border border-[#2A2A2A] text-[#888] font-bold text-sm hover:bg-[#2A2A2A] transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleAddItem}
+                className="flex-1 py-3 rounded-xl bg-[#C9A84C] text-[#0A0A0A] font-bold text-sm hover:bg-[#E8C96A] transition-all"
+              >
+                Adicionar Produto
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+      
       <div className="text-center py-4">
         <button 
            onClick={() => onNavigate('ia')}
