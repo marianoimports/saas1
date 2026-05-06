@@ -55,7 +55,7 @@ import {
   getActiveShopsCount,
   getTotalUsersCount,
   getMRR,
-  getNewShopsLast30Days
+  getNewShopsLast30Days,
   subscribeToAppointments,
   addAppointment,
   updateAppointment
