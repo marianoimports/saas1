@@ -11,31 +11,33 @@ export const auth = getAuth(app);
 export const createUserDocument = async (user: any, additionalData: any = {}) => {
   if (!user) return;
   
-  // TEMPORARILY DISABLED FOR DEBUGGING
-  console.log('createUserDocument DISABLED for debugging - user:', user.email);
-  return;
-  
-  /*
   const userRef = doc(db, 'users', user.uid);
   const snapshot = await getDocFromServer(userRef);
   
   if (!snapshot.exists()) {
     const { email, displayName } = user;
     try {
+      // Create user doc with a shopId (use uid as shopId for simplicity)
       await setDoc(userRef, {
         uid: user.uid,
         email,
         displayName: displayName || '',
         role: 'owner', // default role
         isAdmin: false,
+        shopId: user.uid, // Use uid as shopId
         createdAt: serverTimestamp(),
         ...additionalData
       });
     } catch (error) {
       console.error('Error creating user document:', error);
     }
+  } else {
+    // Update shopId if missing
+    const data = snapshot.data();
+    if (!data.shopId) {
+      await setDoc(userRef, { shopId: user.uid }, { merge: true });
+    }
   }
-  */
 };
 
 export const loginWithEmail = (email: string, password: string) => 
