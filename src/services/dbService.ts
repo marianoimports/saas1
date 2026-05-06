@@ -339,6 +339,56 @@ export async function saveStripeConfig(config: Partial<StripeConfig>) {
   }
 }
 
+// ==================== APPOINTMENTS ====================
+export function subscribeToAppointments<T>(
+  shopId: string,
+  callback: (data: T[]) => void
+) {
+  const q = query(
+    collection(db, `shops/${shopId}/appointments`),
+    orderBy('date', 'asc'),
+    orderBy('time', 'asc')
+  );
+  
+  return onSnapshot(q, (snapshot) => {
+    const items = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as T & { id: string }));
+    callback(items);
+  }, (error) => {
+    console.error(`Error subscribing to appointments:`, error);
+  });
+}
+
+export async function addAppointment(shopId: string, data: any) {
+  try {
+    const docRef = await addDoc(collection(db, `shops/${shopId}/appointments`), {
+      ...data,
+      status: 'pending',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+    return docRef.id;
+  } catch (error) {
+    console.error("Error adding appointment: ", error);
+    throw error;
+  }
+}
+
+export async function updateAppointment(shopId: string, appointmentId: string, data: any) {
+  try {
+    const docRef = doc(db, `shops/${shopId}/appointments`, appointmentId);
+    await updateDoc(docRef, {
+      ...data,
+      updatedAt: serverTimestamp()
+    });
+  } catch (error) {
+    console.error("Error updating appointment: ", error);
+    throw error;
+  }
+}
+
 // ==================== USER SUBSCRIPTIONS ====================
 export function subscribeToUsers<T>(
   callback: (data: T[]) => void

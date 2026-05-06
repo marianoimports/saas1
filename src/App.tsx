@@ -56,6 +56,9 @@ import {
   getTotalUsersCount,
   getMRR,
   getNewShopsLast30Days
+  subscribeToAppointments,
+  addAppointment,
+  updateAppointment
 } from './services/dbService';
 
 type View = 'dashboard' | 'agenda' | 'barbers' | 'estoque' | 'financeiro' | 'ia' | 'admin' | 'pricing' | 'setup';
@@ -254,7 +257,7 @@ function MainApp() {
         <main className="flex-1 overflow-y-auto p-6 md:p-10 custom-scroll">
           <AnimatePresence mode="wait">
             {activeView === 'dashboard' && <DashboardView key="dashboard" onNavigate={setActiveView} />}
-            {activeView === 'agenda' && <AgendaView key="agenda" onNavigate={setActiveView} />}
+            {activeView === 'agenda' && <AgendaView key="agenda" onNavigate={setActiveView} shopId={userData?.shopId || user?.uid || ''} />}
             {activeView === 'barbers' && <BarbersView key="barbers" />}
             {activeView === 'estoque' && <StockView key="estoque" onNavigate={setActiveView} />}
             {activeView === 'financeiro' && <FinanceiroView key="financeiro" />}
@@ -1029,16 +1032,45 @@ function DashboardView({ onNavigate }: { onNavigate: (v: View) => void }) {
   );
 }
 
-function AgendaView({ onNavigate }: { onNavigate: (v: View) => void }) {
-  const days = [
-    { name: 'Seg', num: '05' },
-    { name: 'Ter', num: '06' },
-    { name: 'Qua', num: '07' },
-    { name: 'Qui', num: '08', active: true },
-    { name: 'Sex', num: '09' },
-    { name: 'Sáb', num: '10' },
-    { name: 'Dom', num: '11' },
-  ];
+function AgendaView({ onNavigate, shopId }: { onNavigate: (v: View) => void, shopId: string }) {
+  const [appointments, setAppointments] = React.useState<any[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [selectedDate, setSelectedDate] = React.useState(new Date().toISOString().split('T')[0]);
+
+  React.useEffect(() => {
+    if (!shopId) return;
+    const unsub = subscribeToAppointments(shopId, (data) => {
+      setAppointments(data);
+      setLoading(false);
+    });
+    return () => unsub();
+  }, [shopId]);
+
+  const getWhatsAppLink = (appointment: any) => {
+    const phone = appointment.clientPhone || '';
+    const message = encodeURIComponent(
+      `Olá ${appointment.clientName}! Seu agendamento na KERNEL BARBER SHOPPER está confirmado:\n` +
+      `Data: ${appointment.date}\n` +
+      `Horário: ${appointment.time}\n` +
+      `Serviço: ${appointment.service}\n` +
+      `Barbeiro: ${appointment.barber}\n` +
+      `Aguardamos você!`
+    );
+    return `https://wa.me/${phone}?text=${message}`;
+  };
+
+  const handleConfirm = async (id: string, appointment: any) => {
+    try {
+      await updateAppointment(shopId, id, { status: 'confirmed' });
+      // Send WhatsApp confirmation
+      const link = getWhatsAppLink(appointment);
+      window.open(link, '_blank');
+    } catch (error) {
+      console.error('Error confirming appointment:', error);
+    }
+  };
+
+  const filteredAppointments = appointments.filter(a => a.date === selectedDate);
 
   return (
     <motion.div 
@@ -1057,59 +1089,71 @@ function AgendaView({ onNavigate }: { onNavigate: (v: View) => void }) {
         </button>
       </div>
 
-      <div className="grid grid-cols-7 gap-3">
-        {days.map((d, i) => (
-          <button 
-            key={i} 
-            className={cn(
-              "flex flex-col items-center p-4 rounded-2xl border transition-all",
-              d.active 
-                ? "bg-[#C9A84C] border-[#C9A84C] text-[#0A0A0A]" 
-                : "bg-[#1A1A1A] border-[#2A2A2A] text-[#888] hover:border-[#C9A84C]/50"
-            )}
-          >
-            <span className="text-[10px] uppercase font-bold tracking-widest mb-1">{d.name}</span>
-            <span className="text-xl font-bold">{d.num}</span>
-          </button>
-        ))}
+      <div className="flex gap-3 items-center">
+        <input 
+          type="date" 
+          value={selectedDate}
+          onChange={(e) => setSelectedDate(e.target.value)}
+          className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl px-4 py-2.5 text-sm text-white"
+        />
       </div>
 
       <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-2xl overflow-hidden">
-        <div className="grid grid-cols-5 p-4 border-b border-[#2A2A2A] text-[10px] uppercase font-bold tracking-widest text-[#C9A84C]">
+        <div className="grid grid-cols-6 p-4 border-b border-[#2A2A2A] text-[10px] uppercase font-bold tracking-widest text-[#C9A84C]">
           <div className="col-span-1">Horário</div>
           <div className="col-span-1">Cliente</div>
           <div className="col-span-1">Serviço</div>
           <div className="col-span-1">Barbeiro</div>
-          <div className="col-span-1 text-right">Status</div>
+          <div className="col-span-1">Status</div>
+          <div className="col-span-1 text-right">Ação</div>
         </div>
         <div className="divide-y divide-[#2A2A2A]">
-          {[
-            { t: '08:30', c: 'João Paulo Silva', s: 'Corte Social', b: 'Rafael', st: 'ok' },
-            { t: '09:00', c: 'Carlos Mendes', s: 'Corte + Barba', b: 'Bruno', st: 'ok' },
-            { t: '10:00', c: 'Felipe Rocha', s: 'Pézinho', b: 'Marcos', st: 'wait' },
-            { t: '10:30', c: 'Lucas Ferreira', s: 'Corte Degradê', b: 'Rafael', st: 'wait' },
-            { t: '11:00', c: 'Pedro Alves', s: 'Barba Completa', b: 'Bruno', st: 'ok' },
-            { t: '13:00', c: 'Rodrigo Lima', s: 'Corte Afro', b: 'Marcos', st: 'cancel' },
-            { t: '14:00', c: 'André Costa', s: 'Corte + Pézinho', b: 'Rafael', st: 'wait' },
-          ].map((item, i) => (
-            <div key={i} className="grid grid-cols-5 p-4 items-center text-sm group hover:bg-[#2A2A2A]/30 transition-all">
-              <div className="col-span-1 font-bold text-[#C9A84C] flex items-center gap-2">
-                <StatusDot status={item.st as any} /> {item.t}
-              </div>
-              <div className="col-span-1 text-[#eee]">{item.c}</div>
-              <div className="col-span-1 text-[#888]">{item.s}</div>
-              <div className="col-span-1">
-                <span className="bg-[#C9A84C]/10 text-[#C9A84C] text-[10px] px-2 py-1 rounded-md font-medium uppercase tracking-wider">
-                  {item.b}
-                </span>
-              </div>
-              <div className="col-span-1 text-right">
-                <button className="text-[#888] hover:text-white transition-all opacity-0 group-hover:opacity-100 flex items-center justify-end gap-1 ml-auto">
-                   <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
+          {loading ? (
+            <div className="p-8 text-center text-[#888]">
+              <Loader2 className="w-6 h-6 animate-spin inline" />
             </div>
-          ))}
+          ) : filteredAppointments.length === 0 ? (
+            <div className="p-8 text-center text-[#888]">
+              Nenhum agendamento para esta data
+            </div>
+          ) : (
+            filteredAppointments.map((item) => (
+              <div key={item.id} className="grid grid-cols-6 p-4 items-center text-sm group hover:bg-[#2A2A2A]/30 transition-all">
+                <div className="col-span-1 font-bold text-[#C9A84C] flex items-center gap-2">
+                  <StatusDot status={item.status} /> {item.time}
+                </div>
+                <div className="col-span-1 text-[#eee]">{item.clientName}</div>
+                <div className="col-span-1 text-[#888]">{item.service}</div>
+                <div className="col-span-1">
+                  <span className="bg-[#C9A84C]/10 text-[#C9A84C] text-[10px] px-2 py-1 rounded-md font-medium uppercase tracking-wider">
+                    {item.barber}
+                  </span>
+                </div>
+                <div className="col-span-1">
+                  <span className={cn(
+                    "text-[10px] px-2 py-1 rounded-md font-medium uppercase tracking-wider",
+                    item.status === 'confirmed' ? "bg-green-500/10 text-green-500" :
+                    item.status === 'pending' ? "bg-yellow-500/10 text-yellow-500" :
+                    "bg-red-500/10 text-red-500"
+                  )}>
+                    {item.status === 'confirmed' ? 'Confirmado' : 
+                     item.status === 'pending' ? 'Pendente' : 'Cancelado'}
+                  </span>
+                </div>
+                <div className="col-span-1 text-right">
+                  {item.status === 'pending' && (
+                    <button 
+                      onClick={() => handleConfirm(item.id, item)}
+                      className="text-[#25D366] hover:text-[#25D366]/80 transition-all text-xs font-bold flex items-center gap-1 ml-auto"
+                    >
+                      <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.472-.148-.67.15-.198.297-.767.966-.94 1.164-.173.198-.347.223-.644.075-.297-.149-1.255-.463-2.39-1.475-.883-.788-1.48-1.758-1.653-2.055-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.372-.025-.52-.075-.149-.669-1.612-.916-2.21-.242-.579-.487-.5-.67-.51-.173-.007-.37-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479s1.065 2.876 1.213 3.074c.148.198 2.095 3.2 5.077 4.49.709.306 1.262.489 1.694.626.712.227 1.36.195 1.872.118.571-.085 1.758-.719 2.006-1.412.248-.693.248-1.287.173-1.412-.074-.124-.272-.198-.57-.347z"/></svg>
+                      WhatsApp
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </motion.div>
