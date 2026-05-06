@@ -99,9 +99,11 @@ function MainApp() {
 
   // Get shopId - ALWAYS use user.uid as fallback
   const shopId = React.useMemo(() => {
-    if (userData?.shopId && userData.shopId !== 'undefined') return userData.shopId;
-    if (user?.uid && user.uid !== 'undefined') return user.uid; // Direct fallback to uid
-    return '';
+    const rawShopId = userData?.shopId || user?.uid || '';
+    // Clean shopId - remove any invalid characters
+    const cleanShopId = String(rawShopId).replace(/[^a-zA-Z0-9-_]/g, '');
+    if (!cleanShopId || cleanShopId === 'undefined') return '';
+    return cleanShopId;
   }, [userData, user]);
   
   const [shopIdLoading, setShopIdLoading] = React.useState(true);

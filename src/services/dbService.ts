@@ -24,13 +24,15 @@ export function subscribeToCollection<T>(
   callback: (data: T[]) => void,
   shopId: string
 ) {
-  if (!shopId || shopId === 'undefined' || shopId === 'undefined' || shopId.includes('/')) {
-    console.error('subscribeToCollection: shopId is invalid:', shopId);
+  // Clean and validate shopId
+  const cleanShopId = String(shopId).replace(/[^a-zA-Z0-9-_]/g, '');
+  if (!cleanShopId || cleanShopId === 'undefined' || cleanShopId !== shopId) {
+    console.error('subscribeToCollection: shopId is invalid:', shopId, 'cleaned:', cleanShopId);
     callback([]);
     return () => {};
   }
   const q = query(
-    collection(db, `shops/${shopId}/${path}`),
+    collection(db, `shops/${cleanShopId}/${path}`),
     orderBy('createdAt', 'desc')
   );
 
