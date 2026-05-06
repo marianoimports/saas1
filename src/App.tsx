@@ -58,7 +58,8 @@ import {
   getNewShopsLast30Days,
   subscribeToAppointments,
   addAppointment,
-  updateAppointment
+  updateAppointment,
+  subscribeToCollection
 } from './services/dbService';
 
 type View = 'dashboard' | 'agenda' | 'barbers' | 'estoque' | 'financeiro' | 'ia' | 'admin' | 'pricing' | 'setup';
@@ -256,7 +257,7 @@ function MainApp() {
         {/* Main Content */}
         <main className="flex-1 overflow-y-auto p-6 md:p-10 custom-scroll">
           <AnimatePresence mode="wait">
-            {activeView === 'dashboard' && <DashboardView key="dashboard" onNavigate={setActiveView} />}
+            {activeView === 'dashboard' && <DashboardView key="dashboard" onNavigate={setActiveView} shopId={userData?.shopId || user?.uid || ''} />}
             {activeView === 'agenda' && <AgendaView key="agenda" onNavigate={setActiveView} shopId={userData?.shopId || user?.uid || ''} />}
             {activeView === 'barbers' && <BarbersView key="barbers" />}
             {activeView === 'estoque' && <StockView key="estoque" onNavigate={setActiveView} />}
@@ -947,13 +948,61 @@ export default function App() {
   );
 }
 
-function DashboardView({ onNavigate }: { onNavigate: (v: View) => void }) {
-  const metrics = [
-    { label: 'Receita Hoje', val: 'R$ 1.240', sub: '+12% vs ontem', positive: true },
-    { label: 'Agendamentos', val: '18', sub: '3 pendentes', positive: true },
-    { label: 'Clientes Novos', val: '4', sub: '+2 vs ontem', positive: true },
-    { label: 'Avaliação Média', val: '4.8 ★', sub: '32 avaliações', positive: true },
-  ];
+function DashboardView({ onNavigate, shopId }: { onNavigate: (v: View) => void, shopId: string }) {
+  const [metrics, setMetrics] = React.useState({
+    revenue: 0,
+    appointments: 0,
+    pendingAppointments: 0,
+    newClients: 0,
+    avgRating: 0,
+    totalReviews: 0
+  });
+  const [upcomingAppointments, setUpcomingAppointments] = React.useState<any[]>([]);
+  const [stockAlerts, setStockAlerts] = React.useState<any[]>([]);
+  const [weeklyRevenue, setWeeklyRevenue] = React.useState<number[]>([0, 0, 0, 0, 0, 0, 0]);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    if (!shopId) return;
+
+    // Fetch appointments for today
+    const today = new Date().toISOString().split('T')[0];
+    const unsubAppointments = subscribeToAppointments(shopId, (data) => {
+      const todayApps = data.filter(a => a.date === today);
+      const pending = todayApps.filter(a => a.status === 'pending' || a.status === 'confirmed').length;
+      
+      setUpcomingAppointments(todayApps.slice(0, 4));
+      setMetrics(prev => ({
+        ...prev,
+        appointments: todayApps.length,
+        pendingAppointments: pending
+      }));
+      setLoading(false);
+    });
+
+    // Fetch stock
+    const unsubStock = subscribeToCollection(`${shopId}/stock`, (data) => {
+      const alerts = data.filter((item: any) => item.qty <= 5);
+      setStockAlerts(alerts.slice(0, 4));
+    });
+
+    // Mock other metrics for now (can be enhanced later)
+    setMetrics(prev => ({
+      ...prev,
+      revenue: 1240,
+      newClients: 4,
+      avgRating: 4.8,
+      totalReviews: 32
+    }));
+
+    // Mock weekly revenue
+    setWeeklyRevenue([40, 65, 55, 100, 75, 50, 30]);
+
+    return () => {
+      unsubAppointments();
+      unsubStock();
+    };
+  }, [shopId]);
 
   return (
     <motion.div 
@@ -973,34 +1022,71 @@ function DashboardView({ onNavigate }: { onNavigate: (v: View) => void }) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {metrics.map((m, i) => (
-          <div key={i} className="bg-[#1A1A1A] border border-[#2A2A2A] p-6 rounded-2xl">
-            <p className="text-[#888] text-xs font-medium uppercase tracking-wider mb-2">{m.label}</p>
-            <div className="text-2xl font-bold text-[#E8C96A]">{m.val}</div>
-            <p className={cn("text-[10px] mt-1 font-medium", m.positive ? "text-green-500" : "text-red-500")}>
-              {m.sub}
-            </p>
-          </div>
-        ))}
+        <div className="bg-[#1A1A1A] border border-[#2A2A2A] p-6 rounded-2xl">
+          <p className="text-[#888] text-xs font-medium uppercase tracking-wider mb-2">Receita Hoje</p>
+          <div className="text-2xl font-bold text-[#E8C96A]">R$ {metrics.revenue.toFixed(2)}</div>
+          <p className="text-[10px] mt-1 font-medium text-green-500">+12% vs ontem</p>
+        </div>
+        <div className="bg-[#1A1A1A] border border-[#2A2A2A] p-6 rounded-2xl">
+          <p className="text-[#888] text-xs font-medium uppercase tracking-wider mb-2">Agendamentos</p>
+          <div className="text-2xl font-bold text-[#E8C96A]">{metrics.appointments}</div>
+          <p className="text-[10px] mt-1 font-medium text-green-500">{metrics.pendingAppointments} pendentes</p>
+        </div>
+        <div className="bg-[#1A1A1A] border border-[#2A2A2A] p-6 rounded-2xl">
+          <p className="text-[#888] text-xs font-medium uppercase tracking-wider mb-2">Clientes Novos</p>
+          <div className="text-2xl font-bold text-[#E8C96A]">{metrics.newClients}</div>
+          <p className="text-[10px] mt-1 font-medium text-green-500">+2 vs ontem</p>
+        </div>
+        <div className="bg-[#1A1A1A] border border-[#2A2A2A] p-6 rounded-2xl">
+          <p className="text-[#888] text-xs font-medium uppercase tracking-wider mb-2">Avaliação Média</p>
+          <div className="text-2xl font-bold text-[#E8C96A]">{metrics.avgRating} ★</div>
+          <p className="text-[10px] mt-1 font-medium text-green-500">{metrics.totalReviews} avaliações</p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card title="Próximos Agendamentos" action="Ver agenda" onAction={() => onNavigate('agenda')}>
-          <div className="space-y-4">
-            <AgendaRow status="ok" time="09:00" client="Carlos Mendes" service="Corte + Barba" barber="Rafael" />
-            <AgendaRow status="wait" time="10:30" client="Lucas Ferreira" service="Corte Degradê" barber="Bruno" />
-            <AgendaRow status="ok" time="11:00" client="Pedro Alves" service="Barba Completa" barber="Marcos" />
-            <AgendaRow status="wait" time="14:00" client="André Costa" service="Corte + Pézinho" barber="Rafael" />
-          </div>
+          {loading ? (
+            <div className="p-4 text-center text-[#888]">
+              <Loader2 className="w-5 h-5 animate-spin inline" />
+            </div>
+          ) : upcomingAppointments.length === 0 ? (
+            <div className="p-4 text-center text-[#888] text-sm">
+              Nenhum agendamento para hoje
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {upcomingAppointments.map((app, i) => (
+                <AgendaRow 
+                  key={app.id || i} 
+                  status={app.status === 'confirmed' ? 'ok' : 'wait'} 
+                  time={app.time} 
+                  client={app.clientName} 
+                  service={app.service} 
+                  barber={app.barber} 
+                />
+              ))}
+            </div>
+          )}
         </Card>
 
         <Card title="Alertas de Estoque" action="Ver estoque" onAction={() => onNavigate('estoque')}>
-          <div className="space-y-4">
-            <StockAlert status="critical" item="Pomada Modeladora" qty="2 un" />
-            <StockAlert status="low" item="Gel de Barba" qty="5 un" />
-            <StockAlert status="low" item="Toalhas Descartáveis" qty="12 un" />
-            <StockAlert status="ok" item="Shampoo Profissional" qty="28 un" />
-          </div>
+          {stockAlerts.length === 0 ? (
+            <div className="p-4 text-center text-[#888] text-sm">
+              Estoque ok, sem alertas
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {stockAlerts.map((item, i) => (
+                <StockAlert 
+                  key={item.id || i} 
+                  status={item.qty <= 2 ? 'critical' : 'low'} 
+                  item={item.name} 
+                  qty={`${item.qty} un`} 
+                />
+              ))}
+            </div>
+          )}
           <button 
             onClick={() => onNavigate('ia')}
             className="w-full mt-6 bg-[#C9A84C]/10 text-[#C9A84C] border border-[#C9A84C]/20 py-3 rounded-xl text-sm font-medium hover:bg-[#C9A84C]/20 transition-all flex items-center justify-center gap-2"
@@ -1013,7 +1099,7 @@ function DashboardView({ onNavigate }: { onNavigate: (v: View) => void }) {
 
       <Card title="Receita Semanal">
         <div className="h-48 flex items-end gap-3 pt-6">
-          {[40, 65, 55, 100, 75, 50, 30].map((h, i) => (
+          {weeklyRevenue.map((h, i) => (
             <div key={i} className="flex-1 flex flex-col items-center gap-3">
                <motion.div 
                 initial={{ height: 0 }}
