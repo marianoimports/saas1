@@ -66,6 +66,7 @@ interface Message {
   time: string;
 }
 
+console.log('App loaded v2');
 export function App() {
   const { user, logout, isAdmin, userData, checkAdminStatus } = useAuth();
   
