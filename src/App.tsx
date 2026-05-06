@@ -151,14 +151,7 @@ function MainApp() {
       {/* Top Navigation */}
       <nav className="h-16 bg-[#141414] border-b border-[#2A2A2A] flex items-center px-6 gap-6 sticky top-0 z-50">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-[#C9A84C] rounded-xl flex items-center justify-center">
-            <svg viewBox="0 0 24 24" fill="none" stroke="#0A0A0A" strokeWidth="2.2" className="w-6 h-6">
-              <path d="M6 2l1.5 5.5L12 5l4.5 2.5L18 2" strokeLinecap="round" />
-              <path d="M6 22l1.5-5.5L12 19l4.5-2.5L18 22" strokeLinecap="round" />
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <circle cx="12" cy="12" r="2.5" />
-            </svg>
-          </div>
+          <img src="/logo.png" alt="Logo" className="w-10 h-10 rounded-xl object-cover" />
           <span className="text-[#C9A84C] font-display font-bold tracking-tight text-lg">Kernel Barber</span>
         </div>
 
@@ -407,9 +400,7 @@ function AdminLayout({ user, logout, activeTab, setActiveTab }: any) {
       {/* Admin Top Navigation */}
       <nav className="h-16 bg-[#1A1A1A] border-b border-[#2A2A2A] flex items-center px-6 gap-6 sticky top-0 z-50">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-[#C9A84C] to-[#9A7A30] rounded-xl flex items-center justify-center shadow-lg shadow-[#C9A84C]/20">
-            <ShieldCheck className="w-5 h-5 text-[#0A0A0A]" />
-          </div>
+          <img src="/logo.png" alt="Logo" className="w-10 h-10 rounded-xl object-cover" />
           <div>
             <span className="text-white font-display font-bold tracking-tight text-lg">Kernel Barber</span>
             <span className="text-[#C9A84C] text-xs font-bold ml-2 px-2 py-1 bg-[#C9A84C]/10 rounded-md">SaaS Admin</span>
