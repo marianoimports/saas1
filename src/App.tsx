@@ -66,7 +66,7 @@ interface Message {
   time: string;
 }
 
-export function MainApp() {
+export function App() {
   const { user, logout, isAdmin, userData, checkAdminStatus } = useAuth();
   
   // SIMPLE: Force admin true for this specific email - nothing else matters
