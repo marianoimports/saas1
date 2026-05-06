@@ -28,6 +28,7 @@ export const createUserDocument = async (user: any, additionalData: any = {}) =>
         createdAt: serverTimestamp(),
         ...additionalData
       });
+      console.log('User document created with shopId:', user.uid);
     } catch (error) {
       console.error('Error creating user document:', error);
     }
@@ -36,8 +37,26 @@ export const createUserDocument = async (user: any, additionalData: any = {}) =>
     const data = snapshot.data();
     if (!data.shopId) {
       await setDoc(userRef, { shopId: user.uid }, { merge: true });
+      console.log('Updated user with shopId:', user.uid);
     }
   }
+};
+
+// Helper function to get shopId (creates if doesn't exist)
+export const getShopId = async (user: any) => {
+  if (!user?.uid) return '';
+  
+  const userRef = doc(db, 'users', user.uid);
+  const snapshot = await getDocFromServer(userRef);
+  
+  if (snapshot.exists()) {
+    const data = snapshot.data();
+    if (data.shopId) return data.shopId;
+  }
+  
+  // Create if doesn't exist
+  await createUserDocument(user);
+  return user.uid;
 };
 
 export const loginWithEmail = (email: string, password: string) => 
