@@ -34,7 +34,8 @@ import {
   XCircle,
   Crown,
   Gift,
-  Zap
+  Zap,
+  MessageCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
@@ -337,9 +338,12 @@ function MainApp() {
                 chatEndRef={chatEndRef}
               />
             )}
-          </AnimatePresence>
-        </main>
+      </AnimatePresence>
+      </main>
       </div>
+      <a href="https://wa.me/5562982093065" target="_blank" rel="noopener noreferrer" className="fixed bottom-24 lg:bottom-6 right-6 bg-[#25D366] text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg shadow-[#25D366]/30 hover:scale-110 hover:shadow-xl transition-all z-50">
+        <MessageCircle className="w-7 h-7" />
+      </a>
     </div>
   );
 }
@@ -1939,9 +1943,9 @@ function PricingView() {
       <div className="mt-12 bg-[#141414] border border-[#2A2A2A] rounded-2xl p-8 text-center">
         <h3 className="text-xl font-bold text-white mb-4">Precisa de algo personalizado?</h3>
         <p className="text-[#888] mb-6">Para barbearias com múltiplas unidades ou necessidades específicas.</p>
-        <button className="bg-[#1A1A1A] border border-[#C9A84C]/30 text-[#C9A84C] px-6 py-3 rounded-xl font-bold text-sm hover:bg-[#C9A84C]/10 transition-all">
-          Fale com Vendas
-        </button>
+<a href="https://wa.me/5562982093065" target="_blank" rel="noopener noreferrer" className="bg-[#1A1A1A] border border-[#C9A84C]/30 text-[#C9A84C] px-6 py-3 rounded-xl font-bold text-sm hover:bg-[#C9A84C]/10 transition-all inline-block">
+      Fale com Vendas
+    </a>
       </div>
 
       {pixModal.open && (
