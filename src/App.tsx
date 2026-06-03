@@ -35,7 +35,9 @@ import {
   Crown,
   Gift,
   Zap,
-  MessageCircle
+  MessageCircle,
+  Mail,
+  Lock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
@@ -905,6 +907,7 @@ function LoginScreen() {
   const [error, setError] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const [notifications, setNotifications] = React.useState<{id: number, name: string, action: string, time: string, city: string}[]>([]);
+  const [vagas, setVagas] = React.useState(12);
 
   const fakeNotifications = [
     { name: 'Rafael S.', action: 'assinou o plano Gold', city: 'Goiânia' },
@@ -930,11 +933,12 @@ function LoginScreen() {
         city: fake.city,
       };
       setNotifications(prev => [newNotif, ...prev].slice(0, 3));
+      setVagas(prev => Math.max(1, prev - 1));
     };
 
     const timeout = setTimeout(() => {
       addNotification();
-      const interval = setInterval(addNotification, 8000);
+      const interval = setInterval(addNotification, 12000);
       return () => clearInterval(interval);
     }, 3000);
 
@@ -960,33 +964,87 @@ function LoginScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center p-6 relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-[#1a1a1a] to-[#0A0A0A]" />
+    <div className="min-h-screen bg-[#050505] flex relative overflow-hidden">
+      {/* LADO ESQUERDO - HERO */}
+      <div className="hidden lg:flex lg:w-[55%] flex-col justify-between p-12 relative">
+        <div className="absolute inset-0 bg-gradient-to-br from-[#0A0A0A] via-[#111] to-[#050505]" />
+        <div className="absolute top-0 right-0 w-96 h-96 bg-[#C9A84C]/5 rounded-full blur-[120px]" />
+        <div className="absolute bottom-0 left-0 w-72 h-72 bg-[#C9A84C]/8 rounded-full blur-[100px]" />
 
-      <div className="absolute top-0 left-0 right-0">
-        <div className="bg-gradient-to-r from-[#C9A84C] to-[#E8C96A] text-[#0A0A0A] py-2 px-6 text-center font-black tracking-wide text-xs">
-          <span className="animate-pulse mr-2">FLASH PROMO</span> | FIRST 12 SPOTS | <span className="font-mono">{new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+        <div className="relative z-10">
+          <div className="flex items-center gap-3 mb-2">
+            <img src="/logo.png" alt="" className="w-10 h-10 rounded-xl object-cover" />
+            <span className="text-[#C9A84C] text-sm font-bold tracking-[0.3em] uppercase">Kernel</span>
+          </div>
+        </div>
+
+        <div className="relative z-10 space-y-8">
+          <div>
+            <div className="inline-flex items-center gap-2 bg-[#C9A84C]/10 border border-[#C9A84C]/20 rounded-full px-4 py-1.5 mb-6">
+              <div className="w-2 h-2 rounded-full bg-[#C9A84C] animate-pulse" />
+              <span className="text-[#C9A84C] text-xs font-semibold">FLASH PROMO — Restam apenas {vagas} vagas</span>
+            </div>
+            <h1 className="text-5xl xl:text-6xl font-display font-bold text-white leading-[1.1] mb-6">
+              A barbearia<br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#C9A84C] to-[#E8C96A]">do futuro,</span><br />
+              começa aqui.
+            </h1>
+            <p className="text-[#777] text-lg max-w-md leading-relaxed">
+              Gestão inteligente com IA, agendamentos automáticos, finance completo e loja integrada. Tudo em uma plataforma.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4 max-w-md">
+            {[
+              { value: '2.847+', label: 'Barbearias' },
+              { value: '98%', label: 'Satisfação' },
+              { value: '4.9', label: 'Avaliação' },
+            ].map((stat) => (
+              <div key={stat.label} className="text-center">
+                <p className="text-2xl font-bold text-white">{stat.value}</p>
+                <p className="text-xs text-[#555] mt-1">{stat.label}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex flex-col gap-3 max-w-md">
+            {[
+              { icon: '✦', text: 'IA que agenda, responde e vende por você' },
+              { icon: '⚡', text: 'Dashboard financeiro em tempo real' },
+              { icon: '🛍', text: 'Loja de produtos integrada ao sistema' },
+            ].map((feat) => (
+              <div key={feat.text} className="flex items-center gap-3 bg-[#111] border border-[#1A1A1A] rounded-xl px-4 py-3">
+                <span className="text-lg">{feat.icon}</span>
+                <span className="text-sm text-[#aaa]">{feat.text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="relative z-10">
+          <p className="text-[11px] text-[#333] tracking-widest uppercase">Enterprise Edition / 2026</p>
         </div>
       </div>
 
-      <div className="absolute bottom-6 left-6 space-y-3 z-10">
+      {/* NOTIFICAÇÕES FAKE - LADO ESQUERDO INFERIOR */}
+      <div className="hidden lg:block absolute bottom-12 left-12 space-y-2 z-20">
         <AnimatePresence>
           {notifications.map((notif) => (
             <motion.div
               key={notif.id}
-              initial={{ opacity: 0, x: -100, scale: 0.9 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: -100, scale: 0.9 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-              className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl px-4 py-3 shadow-2xl max-w-xs"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.4 }}
+              className="bg-[#111]/90 backdrop-blur-xl border border-[#1E1E1E] rounded-xl px-4 py-3 shadow-2xl max-w-[280px]"
             >
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-[#C9A84C]/20 flex items-center justify-center text-[#C9A84C] text-xs font-bold">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#C9A84C] to-[#E8C96A] flex items-center justify-center text-[#0A0A0A] text-xs font-black shrink-0">
                   {notif.name.charAt(0)}
                 </div>
-                <div>
-                  <p className="text-[11px] text-white font-bold">{notif.name} {notif.action}</p>
-                  <p className="text-[9px] text-[#888]">{notif.city} • {notif.time}</p>
+                <div className="min-w-0">
+                  <p className="text-[12px] text-white font-semibold truncate">{notif.name} {notif.action}</p>
+                  <p className="text-[10px] text-[#555]">{notif.city} • {notif.time}</p>
                 </div>
               </div>
             </motion.div>
@@ -994,78 +1052,124 @@ function LoginScreen() {
         </AnimatePresence>
       </div>
 
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="max-w-md w-full bg-[#141414] border border-[#2A2A2A] rounded-[32px] p-10 text-center shadow-2xl relative overflow-hidden z-10"
-      >
-        <div className="absolute -top-24 -left-24 w-48 h-48 bg-[#C9A84C]/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-[#C9A84C]/5 rounded-full blur-3xl" />
+      {/* LADO DIREITO - FORM */}
+      <div className="w-full lg:w-[45%] flex items-center justify-center p-6 lg:p-12 relative">
+        <div className="absolute inset-0 bg-[#080808] lg:bg-[#0A0A0A]" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#C9A84C]/3 rounded-full blur-[150px]" />
 
-        <div className="relative">
-          <img src="/logo.png" alt="KERNEL BARBER SHOPPER" className="w-20 h-20 rounded-3xl object-cover mx-auto mb-6 shadow-2xl shadow-[#C9A84C]/20" />
-          <h1 className="text-3xl font-display font-bold text-white mb-1 tracking-tight">KERNEL BARBER SHOPPER</h1>
-          <p className="text-[#C9A84C] text-xs font-bold tracking-widest uppercase mb-4">KERNEL BEAUTY SHOPPER</p>
-          <p className="text-[#888] text-sm mb-8 font-medium">A gestão de luxo para sua barbearia,<br />agora com inteligência artificial.</p>
+        {/* Banner promo mobile */}
+        <div className="lg:hidden absolute top-0 left-0 right-0 z-20">
+          <div className="bg-gradient-to-r from-[#C9A84C] to-[#E8C96A] text-[#0A0A0A] py-2.5 px-4 text-center font-bold tracking-wide text-xs flex items-center justify-center gap-2">
+            <span className="animate-pulse">⚡</span>
+            FLASH PROMO — Restam {vagas} vagas
+          </div>
+        </div>
 
-          <div className="flex items-center justify-center gap-6 mb-8">
-            <div className="flex items-center gap-2 text-[#25D366]">
-              <div className="w-2 h-2 rounded-full bg-[#25D366] animate-pulse" />
-              <span className="text-[10px] font-bold">AI Assistant Online</span>
-            </div>
-            <div className="flex items-center gap-2 text-[#C9A84C]">
-              <Star className="w-3 h-3 fill-current" />
-              <span className="text-[10px] font-bold">Store</span>
-            </div>
-            <div className="flex items-center gap-2 text-purple-400">
-              <Gift className="w-3 h-3" />
-              <span className="text-[10px] font-bold">Free Professional Kit</span>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="max-w-sm w-full relative z-10 lg:pt-0 pt-14"
+        >
+          <div className="lg:hidden flex items-center gap-3 mb-8 justify-center">
+            <img src="/logo.png" alt="" className="w-12 h-12 rounded-2xl object-cover shadow-lg" />
+            <div>
+              <h2 className="text-xl font-display font-bold text-white">KERNEL</h2>
+              <p className="text-[#C9A84C] text-[10px] font-bold tracking-[0.2em]">BARBER SHOPPER</p>
             </div>
           </div>
 
-          <div className="bg-[#1A1A1A] rounded-xl p-1 mb-6">
-            <p className="text-[9px] text-[#C9A84C] font-bold uppercase tracking-widest mb-2">LOGIN</p>
+          <div className="mb-8 hidden lg:block">
+            <h2 className="text-2xl font-bold text-white mb-1">
+              {isRegistering ? 'Criar conta' : 'Bem-vindo de volta'}
+            </h2>
+            <p className="text-[#555] text-sm">
+              {isRegistering ? 'Comece seu teste grátis agora' : 'Acesse seu painel premium'}
+            </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#C9A84C] transition-all text-white placeholder-[#555]"
-              required
-            />
-            <input
-              type="password"
-              placeholder="Senha"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#C9A84C] transition-all text-white placeholder-[#555]"
-              required
-            />
-            {error && <p className="text-red-500 text-xs">{error}</p>}
+            <div className="space-y-1.5">
+              <label className="text-xs text-[#555] font-medium ml-1 hidden lg:block">Email</label>
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#444]" />
+                <input
+                  type="email"
+                  placeholder="seu@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full bg-[#111] border border-[#1E1E1E] rounded-2xl pl-11 pr-4 py-3.5 text-sm focus:outline-none focus:border-[#C9A84C]/50 focus:ring-1 focus:ring-[#C9A84C]/20 transition-all text-white placeholder-[#333]"
+                  required
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs text-[#555] font-medium ml-1 hidden lg:block">Senha</label>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#444]" />
+                <input
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full bg-[#111] border border-[#1E1E1E] rounded-2xl pl-11 pr-4 py-3.5 text-sm focus:outline-none focus:border-[#C9A84C]/50 focus:ring-1 focus:ring-[#C9A84C]/20 transition-all text-white placeholder-[#333]"
+                  required
+                />
+              </div>
+            </div>
+
+            {error && (
+              <motion.p
+                initial={{ opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-red-400 text-xs bg-red-400/5 border border-red-400/10 rounded-xl px-4 py-2"
+              >
+                {error}
+              </motion.p>
+            )}
+
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#C9A84C] text-[#0A0A0A] py-4 rounded-2xl font-bold hover:bg-[#E8C96A] hover:scale-[1.02] active:scale-95 transition-all shadow-xl disabled:opacity-50"
+              className="w-full bg-gradient-to-r from-[#C9A84C] to-[#E8C96A] text-[#0A0A0A] py-4 rounded-2xl font-bold text-sm hover:shadow-lg hover:shadow-[#C9A84C]/20 hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-50 disabled:hover:scale-100 mt-2"
             >
-              {loading ? 'Aguarde...' : (isRegistering ? 'Cadastrar' : 'Enter')}
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                  Processando...
+                </span>
+              ) : (isRegistering ? 'Criar conta grátis' : 'Entrar')}
             </button>
           </form>
 
+          <div className="mt-6 flex items-center gap-3">
+            <div className="flex-1 h-px bg-[#1A1A1A]" />
+            <span className="text-[10px] text-[#333] uppercase tracking-widest">ou</span>
+            <div className="flex-1 h-px bg-[#1A1A1A]" />
+          </div>
+
+          <a
+            href="https://wa.me/5562982093065"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-4 w-full flex items-center justify-center gap-2 bg-[#25D366]/10 border border-[#25D366]/20 text-[#25D366] py-3.5 rounded-2xl font-semibold text-sm hover:bg-[#25D366]/20 transition-all"
+          >
+            <MessageCircle className="w-4 h-4" />
+            Falar com especialista
+          </a>
+
           <button
             onClick={() => { setIsRegistering(!isRegistering); setError(''); }}
-            className="mt-4 text-xs text-[#888] hover:text-[#C9A84C] transition-all"
+            className="mt-4 w-full text-xs text-[#555] hover:text-[#C9A84C] transition-all py-2"
           >
-            {isRegistering ? 'Já tem conta? Entrar' : "Don't have an account? Sign up"}
+            {isRegistering ? 'Já tem conta? Entrar' : 'Não tem conta? Cadastre-se grátis'}
           </button>
 
-          <p className="mt-8 text-[10px] text-[#555] uppercase font-black tracking-widest">
-            Enterprise Edition / 2026 — Desenvolvido por Michael Mariano
+          <p className="mt-6 text-[9px] text-[#222] text-center uppercase tracking-[0.2em]">
+            Enterprise Edition / 2026 — Michael Mariano
           </p>
-        </div>
-      </motion.div>
+        </motion.div>
+      </div>
     </div>
   );
 }
