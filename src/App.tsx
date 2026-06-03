@@ -904,6 +904,42 @@ function LoginScreen() {
   const [isRegistering, setIsRegistering] = React.useState(false);
   const [error, setError] = React.useState('');
   const [loading, setLoading] = React.useState(false);
+  const [notifications, setNotifications] = React.useState<{id: number, name: string, action: string, time: string, city: string}[]>([]);
+
+  const fakeNotifications = [
+    { name: 'Rafael S.', action: 'assinou o plano Gold', city: 'Goiânia' },
+    { name: 'Bruno N.', action: 'criou uma conta', city: 'São Paulo' },
+    { name: 'Carlos M.', action: 'assinou o plano Enterprise', city: 'Brasília' },
+    { name: 'Lucas P.', action: 'começou o teste grátis', city: 'Belo Horizonte' },
+    { name: 'Marcos R.', action: 'assinou o plano Prata', city: 'Curitiba' },
+    { name: 'André L.', action: 'criou uma conta', city: 'Salvador' },
+    { name: 'Felipe G.', action: 'assinou o plano Gold', city: 'Fortaleza' },
+    { name: 'João V.', action: 'começou o teste grátis', city: 'Recife' },
+    { name: 'Pedro H.', action: 'assinou o plano Enterprise', city: 'Manaus' },
+    { name: 'Thiago F.', action: 'criou uma conta', city: 'Porto Alegre' },
+  ];
+
+  React.useEffect(() => {
+    const addNotification = () => {
+      const fake = fakeNotifications[Math.floor(Math.random() * fakeNotifications.length)];
+      const newNotif = {
+        id: Date.now(),
+        name: fake.name,
+        action: fake.action,
+        time: 'agora',
+        city: fake.city,
+      };
+      setNotifications(prev => [newNotif, ...prev].slice(0, 3));
+    };
+
+    const timeout = setTimeout(() => {
+      addNotification();
+      const interval = setInterval(addNotification, 8000);
+      return () => clearInterval(interval);
+    }, 3000);
+
+    return () => clearTimeout(timeout);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -924,20 +960,73 @@ function LoginScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center p-6 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-[#1a1a1a] to-[#0A0A0A]">
-      <motion.div 
+    <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center p-6 relative overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-[#1a1a1a] to-[#0A0A0A]" />
+
+      <div className="absolute top-0 left-0 right-0">
+        <div className="bg-gradient-to-r from-[#C9A84C] to-[#E8C96A] text-[#0A0A0A] py-2 px-6 text-center font-black tracking-wide text-xs">
+          <span className="animate-pulse mr-2">FLASH PROMO</span> | FIRST 12 SPOTS | <span className="font-mono">{new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+        </div>
+      </div>
+
+      <div className="absolute bottom-6 left-6 space-y-3 z-10">
+        <AnimatePresence>
+          {notifications.map((notif) => (
+            <motion.div
+              key={notif.id}
+              initial={{ opacity: 0, x: -100, scale: 0.9 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: -100, scale: 0.9 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl px-4 py-3 shadow-2xl max-w-xs"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-[#C9A84C]/20 flex items-center justify-center text-[#C9A84C] text-xs font-bold">
+                  {notif.name.charAt(0)}
+                </div>
+                <div>
+                  <p className="text-[11px] text-white font-bold">{notif.name} {notif.action}</p>
+                  <p className="text-[9px] text-[#888]">{notif.city} • {notif.time}</p>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+
+      <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="max-w-md w-full bg-[#141414] border border-[#2A2A2A] rounded-[32px] p-10 text-center shadow-2xl relative overflow-hidden"
+        className="max-w-md w-full bg-[#141414] border border-[#2A2A2A] rounded-[32px] p-10 text-center shadow-2xl relative overflow-hidden z-10"
       >
         <div className="absolute -top-24 -left-24 w-48 h-48 bg-[#C9A84C]/10 rounded-full blur-3xl" />
         <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-[#C9A84C]/5 rounded-full blur-3xl" />
-        
+
         <div className="relative">
-          <img src="/logo.png" alt="KERNEL BARBER SHOPPER" className="w-20 h-20 rounded-3xl object-cover mx-auto mb-8 shadow-2xl shadow-[#C9A84C]/20" />
-          <h1 className="text-3xl font-display font-bold text-white mb-3 tracking-tight">KERNEL BARBER SHOPPER</h1>
-          <p className="text-[#888] text-sm mb-10 font-medium">A gestão de luxo para sua barbearia,<br />agora com inteligência artificial.</p>
-          
+          <img src="/logo.png" alt="KERNEL BARBER SHOPPER" className="w-20 h-20 rounded-3xl object-cover mx-auto mb-6 shadow-2xl shadow-[#C9A84C]/20" />
+          <h1 className="text-3xl font-display font-bold text-white mb-1 tracking-tight">KERNEL BARBER SHOPPER</h1>
+          <p className="text-[#C9A84C] text-xs font-bold tracking-widest uppercase mb-4">KERNEL BEAUTY SHOPPER</p>
+          <p className="text-[#888] text-sm mb-8 font-medium">A gestão de luxo para sua barbearia,<br />agora com inteligência artificial.</p>
+
+          <div className="flex items-center justify-center gap-6 mb-8">
+            <div className="flex items-center gap-2 text-[#25D366]">
+              <div className="w-2 h-2 rounded-full bg-[#25D366] animate-pulse" />
+              <span className="text-[10px] font-bold">AI Assistant Online</span>
+            </div>
+            <div className="flex items-center gap-2 text-[#C9A84C]">
+              <Star className="w-3 h-3 fill-current" />
+              <span className="text-[10px] font-bold">Store</span>
+            </div>
+            <div className="flex items-center gap-2 text-purple-400">
+              <Gift className="w-3 h-3" />
+              <span className="text-[10px] font-bold">Free Professional Kit</span>
+            </div>
+          </div>
+
+          <div className="bg-[#1A1A1A] rounded-xl p-1 mb-6">
+            <p className="text-[9px] text-[#C9A84C] font-bold uppercase tracking-widest mb-2">LOGIN</p>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <input
               type="email"
@@ -961,7 +1050,7 @@ function LoginScreen() {
               disabled={loading}
               className="w-full bg-[#C9A84C] text-[#0A0A0A] py-4 rounded-2xl font-bold hover:bg-[#E8C96A] hover:scale-[1.02] active:scale-95 transition-all shadow-xl disabled:opacity-50"
             >
-              {loading ? 'Aguarde...' : (isRegistering ? 'Cadastrar' : 'Entrar')}
+              {loading ? 'Aguarde...' : (isRegistering ? 'Cadastrar' : 'Enter')}
             </button>
           </form>
 
@@ -969,10 +1058,12 @@ function LoginScreen() {
             onClick={() => { setIsRegistering(!isRegistering); setError(''); }}
             className="mt-4 text-xs text-[#888] hover:text-[#C9A84C] transition-all"
           >
-            {isRegistering ? 'Já tem conta? Entrar' : 'Não tem conta? Cadastre-se'}
+            {isRegistering ? 'Já tem conta? Entrar' : "Don't have an account? Sign up"}
           </button>
-          
-          <p className="mt-8 text-[10px] text-[#555] uppercase font-black tracking-widest">Enterprise Edition / 2026</p>
+
+          <p className="mt-8 text-[10px] text-[#555] uppercase font-black tracking-widest">
+            Enterprise Edition / 2026 — Desenvolvido por Michael Mariano
+          </p>
         </div>
       </motion.div>
     </div>
@@ -1764,6 +1855,8 @@ function PricingView() {
   const { user } = useAuth();
   const [pixModal, setPixModal] = React.useState<{open: boolean, brCode?: string, brCodeBase64?: string, checkoutId?: string}>({open: false});
   const [checking, setChecking] = React.useState(false);
+  const [vagasRestantes, setVagasRestantes] = React.useState(12);
+  const [flashVisible, setFlashVisible] = React.useState(true);
 
   React.useEffect(() => {
     const unsub = subscribeToPlans<any>((data) => {
@@ -1771,6 +1864,21 @@ function PricingView() {
       setLoading(false);
     });
     return () => unsub();
+  }, []);
+
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setVagasRestantes(prev => {
+        if (prev <= 3) return Math.floor(Math.random() * 3) + 3;
+        return prev - (Math.random() > 0.7 ? 1 : 0);
+      });
+    }, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => setFlashVisible(false), 8000);
+    return () => clearTimeout(timer);
   }, []);
 
   const formatCurrency = (value: number) => {
@@ -1782,7 +1890,7 @@ function PricingView() {
       alert('Faça login para assinar um plano!');
       return;
     }
-    
+
     try {
       setChecking(true);
       const response = await fetch('/api/create-checkout', {
@@ -1795,7 +1903,7 @@ function PricingView() {
           email: user.email,
         }),
       });
-      
+
       const data = await response.json();
       if (data.success) {
         setPixModal({open: true, brCode: data.brCode, brCodeBase64: data.brCodeBase64, checkoutId: data.checkoutId});
@@ -1809,143 +1917,161 @@ function PricingView() {
     }
   };
 
+  const staticPlans = [
+    { name: 'Grátis', price: 0, badge: 'Free', badgeColor: 'bg-green-500', features: ['10 agendamentos/mês', 'Cadastro de até 5 produtos', '1 barbeiro'], cta: 'Começar Grátis', ctaStyle: 'bg-green-500/10 border border-green-500/30 text-green-500 hover:bg-green-500/20' },
+    { name: 'Prata', price: 29.90, badge: 'Prata', badgeColor: 'bg-gray-400', features: ['Agendamentos ilimitados', 'IA Assistente', '3 barbeiros', 'Estoque ilimitado', 'Financeiro completo', 'Loja online (10 produtos)', 'Agendamento online'], cta: 'Assinar', ctaStyle: 'bg-[#1A1A1A] border border-[#2A2A2A] text-white hover:bg-[#222]' },
+    { name: 'Gold', price: 79.90, badge: 'Mais Popular', badgeColor: 'bg-[#C9A84C]', features: ['Agendamentos ilimitados', 'IA Assistente', 'Loja online completa', '5 barbeiros', 'Estoque ilimitado', 'Financeiro completo', 'Suporte prioritário', 'Personalizável com sua marca'], cta: 'Assinar', ctaStyle: 'bg-[#C9A84C] text-[#0A0A0A] hover:bg-[#E8C96A] shadow-lg shadow-[#C9A84C]/20', highlight: true, promo: 'Primeiros 10 levam Kit Profissional Grátis!' },
+    { name: 'Enterprise PRO', price: 129.90, originalPrice: 249.90, badge: 'RECOMENDADO', badgeColor: 'bg-purple-600', features: ['Barbeiros ilimitados', 'Loja online completa', 'IA Assistente', 'Suporte prioritário 24h', 'Gestor de equipe', 'Relatórios avançados', 'Agendamento ilimitado'], cta: 'Garantir Oferta', ctaStyle: 'bg-purple-600 text-white hover:bg-purple-700 shadow-lg shadow-purple-600/20', promo: 'Máquina Personalizada com sua Logo Grátis!' },
+  ];
+
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="max-w-6xl mx-auto space-y-8 py-8"
     >
-      <div className="text-center mb-12">
+      {flashVisible && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-gradient-to-r from-[#C9A84C] to-[#E8C96A] text-[#0A0A0A] py-3 px-6 rounded-2xl text-center font-black tracking-wide text-sm flex items-center justify-center gap-3"
+        >
+          <span className="animate-pulse">FLASH PROMO</span>
+          <span className="text-[#0A0A0A]/60">|</span>
+          <span>FIRST {vagasRestantes} SPOTS</span>
+          <span className="text-[#0A0A0A]/60">|</span>
+          <span className="font-mono">{new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+        </motion.div>
+      )}
+
+      <div className="text-center mb-8">
         <h1 className="text-4xl font-display font-bold text-white mb-4">
-          Escolha o Plano Ideal para sua <span className="text-[#C9A84C]">Barbearia</span>
+          Planos
         </h1>
         <p className="text-[#888] text-lg max-w-2xl mx-auto">
-          Gerencie sua barbearia com inteligência artificial e ferramentas profissionais. Comece grátis!
+          Escolha o melhor para seu salão
         </p>
+        <motion.p
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ repeat: Infinity, duration: 2 }}
+          className="text-[#C9A84C] text-sm font-bold mt-2"
+        >
+          As primeiras 12 pessoas ganham condições especiais!
+        </motion.p>
       </div>
 
-      {loading ? (
-        <div className="text-center py-12">
-          <Loader2 className="w-8 h-8 text-[#C9A84C] animate-spin inline" />
+      <div className="flex items-center justify-center gap-2 mb-4">
+        <span className="text-[#888] text-sm font-bold">Vagas promocionais restantes</span>
+        <div className="flex gap-1">
+          {Array.from({ length: 12 }, (_, i) => (
+            <motion.span
+              key={i}
+              animate={i < vagasRestantes ? { scale: [1, 1.1, 1] } : {}}
+              transition={{ repeat: Infinity, duration: 1, delay: i * 0.05 }}
+              className={cn(
+                "w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-black",
+                i < vagasRestantes
+                  ? "bg-[#C9A84C] text-[#0A0A0A]"
+                  : "bg-[#2A2A2A] text-[#555]"
+              )}
+            >
+              {12 - i}
+            </motion.span>
+          ))}
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-start">
-          {plans.map((plan, i) => {
-            const isFree = plan.price === 0;
-            const isPopular = plan.price === 29.99 || plan.name.toLowerCase().includes('pro');
-            
-            return (
-              <div 
-                key={plan.id || i} 
-                className={cn(
-                  "relative bg-[#141414] border rounded-2xl p-6 transition-all hover:scale-[1.02]",
-                  isPopular ? "border-[#C9A84C] shadow-lg shadow-[#C9A84C]/20" : "border-[#2A2A2A] hover:border-[#3A3A3A]",
-                  isFree && "border-green-500/50"
-                )}
-              >
-                {isPopular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#C9A84C] text-[#0A0A0A] text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-widest">
-                    Mais Popular
-                  </div>
-                )}
-                {isFree && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-green-500 text-[#0A0A0A] text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-widest">
-                    Grátis
-                  </div>
-                )}
+      </div>
 
-                <div className="text-center mb-6">
-                  <h3 className="text-xl font-bold text-white mb-2">{plan.name}</h3>
-                  <div className="mb-2">
-                    {isFree ? (
-                      <span className="text-4xl font-bold text-green-400">Grátis</span>
-                    ) : (
-                      <>
-                        <span className="text-4xl font-bold text-[#C9A84C]">
-                          {formatCurrency(plan.price).replace(',', ',')}
-                        </span>
-                        <span className="text-[#888] text-sm ml-1">
-                          /{plan.interval === 'yearly' ? 'ano' : 'mês'}
-                        </span>
-                      </>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-start">
+        {staticPlans.map((plan, i) => (
+          <div
+            key={i}
+            className={cn(
+              "relative bg-[#141414] border rounded-2xl p-6 transition-all hover:scale-[1.02]",
+              plan.highlight ? "border-[#C9A84C] shadow-lg shadow-[#C9A84C]/20" : "border-[#2A2A2A] hover:border-[#3A3A3A]",
+              plan.name === 'Grátis' && "border-green-500/50",
+              plan.name === 'Enterprise PRO' && "border-purple-500/50"
+            )}
+          >
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+              <span className={cn("text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-widest text-white", plan.badgeColor)}>
+                {plan.badge}
+              </span>
+            </div>
+
+            <div className="text-center mb-6">
+              <h3 className="text-xl font-bold text-white mb-2">{plan.name}</h3>
+              <div className="mb-2">
+                {plan.price === 0 ? (
+                  <span className="text-4xl font-bold text-green-400">Grátis</span>
+                ) : (
+                  <>
+                    {plan.originalPrice && (
+                      <span className="text-sm text-[#555] line-through mr-2">R$ {plan.originalPrice.toFixed(2).replace('.', ',')}</span>
                     )}
-                  </div>
-                  {plan.trialDays > 0 && (
-                    <p className="text-[10px] text-[#C9A84C] font-bold">
-                      {plan.trialDays} dias grátis
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-3 mb-6">
-                  {plan.features?.map((feature: string, idx: number) => (
-                    <div key={idx} className="flex items-center gap-2 text-sm text-[#eee]">
-                      <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
-                      {feature}
-                    </div>
-                  ))}
-                  {plan.maxBarbers > 0 && (
-                    <div className="flex items-center gap-2 text-sm text-[#eee]">
-                      <Users className="w-4 h-4 text-[#C9A84C] shrink-0" />
-                      Até {plan.maxBarbers} barbeiro{plan.maxBarbers > 1 ? 's' : ''}
-                    </div>
-                  )}
-                  {plan.hasAI && (
-                    <div className="flex items-center gap-2 text-sm text-[#eee]">
-                      <Bot className="w-4 h-4 text-[#C9A84C] shrink-0" />
-                      IA Assistente inclusa
-                    </div>
-                  )}
-                  {plan.hasReports && (
-                    <div className="flex items-center gap-2 text-sm text-[#eee]">
-                      <TrendingUp className="w-4 h-4 text-[#C9A84C] shrink-0" />
-                      Relatórios avançados
-                    </div>
-                  )}
-                </div>
-
-                <button
-                  onClick={() => handleSelectPlan(plan)}
-                  disabled={checking}
-                  className={cn(
-                    "w-full py-3 rounded-xl font-bold text-sm transition-all",
-                    isFree 
-                      ? "bg-green-500/10 border border-green-500/30 text-green-500 hover:bg-green-500/20"
-                      : isPopular
-                        ? "bg-[#C9A84C] text-[#0A0A0A] hover:bg-[#E8C96A] shadow-lg shadow-[#C9A84C]/20"
-                        : "bg-[#1A1A1A] border border-[#2A2A2A] text-white hover:bg-[#222]",
-                    checking && "opacity-50 cursor-not-allowed"
-                  )}
-                >
-                  {checking ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Processando...
+                    <span className="text-4xl font-bold text-[#C9A84C]">
+                      R$ {plan.price.toFixed(2).replace('.', ',')}
                     </span>
-                  ) : isFree ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <Gift className="w-4 h-4" />
-                      Começar Grátis
-                    </span>
-                  ) : (
-                    <span className="flex items-center justify-center gap-2">
-                      <Zap className="w-4 h-4" />
-                      Assinar Agora
-                    </span>
-                  )}
-                </button>
+                    <span className="text-[#888] text-sm ml-1">/mês</span>
+                  </>
+                )}
               </div>
-            );
-          })}
-        </div>
-      )}
+              {plan.promo && (
+                <motion.p
+                  animate={{ opacity: [0.6, 1, 0.6] }}
+                  transition={{ repeat: Infinity, duration: 2 }}
+                  className="text-[10px] text-[#C9A84C] font-bold"
+                >
+                  {plan.promo}
+                </motion.p>
+              )}
+            </div>
+
+            <div className="space-y-3 mb-6">
+              {plan.features.map((feature, idx) => (
+                <div key={idx} className="flex items-center gap-2 text-sm text-[#eee]">
+                  <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
+                  {feature}
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={() => {
+                if (plan.price === 0) return;
+                const firebasePlan = plans.find(p => p.name?.toLowerCase().includes(plan.name.toLowerCase().replace(' enterprise', '').replace(' pro', '').trim()));
+                if (firebasePlan) handleSelectPlan(firebasePlan);
+                else alert('Faça login para assinar!');
+              }}
+              disabled={checking}
+              className={cn("w-full py-3 rounded-xl font-bold text-sm transition-all", plan.ctaStyle, checking && "opacity-50 cursor-not-allowed")}
+            >
+              {checking ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Processando...
+                </span>
+              ) : plan.price === 0 ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Gift className="w-4 h-4" />
+                  {plan.cta}
+                </span>
+              ) : (
+                <span className="flex items-center justify-center gap-2">
+                  <Zap className="w-4 h-4" />
+                  {plan.cta}
+                </span>
+              )}
+            </button>
+          </div>
+        ))}
+      </div>
 
       <div className="mt-12 bg-[#141414] border border-[#2A2A2A] rounded-2xl p-8 text-center">
         <h3 className="text-xl font-bold text-white mb-4">Precisa de algo personalizado?</h3>
         <p className="text-[#888] mb-6">Para barbearias com múltiplas unidades ou necessidades específicas.</p>
-<a href="https://wa.me/5562982093065" target="_blank" rel="noopener noreferrer" className="bg-[#1A1A1A] border border-[#C9A84C]/30 text-[#C9A84C] px-6 py-3 rounded-xl font-bold text-sm hover:bg-[#C9A84C]/10 transition-all inline-block">
-      Fale com Vendas
-    </a>
+        <a href="https://wa.me/5562982093065" target="_blank" rel="noopener noreferrer" className="bg-[#1A1A1A] border border-[#C9A84C]/30 text-[#C9A84C] px-6 py-3 rounded-xl font-bold text-sm hover:bg-[#C9A84C]/10 transition-all inline-block">
+          Fale com Vendas
+        </a>
       </div>
 
       {pixModal.open && (
