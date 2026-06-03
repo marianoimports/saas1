@@ -35,9 +35,7 @@ import {
   Crown,
   Gift,
   Zap,
-  MessageCircle,
-  Mail,
-  Lock
+  MessageCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
@@ -340,12 +338,9 @@ function MainApp() {
                 chatEndRef={chatEndRef}
               />
             )}
-      </AnimatePresence>
-      </main>
+          </AnimatePresence>
+        </main>
       </div>
-      <a href="https://wa.me/5562982093065" target="_blank" rel="noopener noreferrer" className="fixed bottom-24 lg:bottom-6 right-6 bg-[#25D366] text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg shadow-[#25D366]/30 hover:scale-110 hover:shadow-xl transition-all z-50">
-        <MessageCircle className="w-7 h-7" />
-      </a>
     </div>
   );
 }
@@ -893,11 +888,14 @@ function AdminLayout({ user, logout, activeTab, setActiveTab }: any) {
               </div>
             </motion.div>
           )}
-        </AnimatePresence>
+      </AnimatePresence>
       </div>
-    </div>
-  );
-}
+      <a href="https://wa.me/5562982093065" target="_blank" rel="noopener noreferrer" className="fixed bottom-24 lg:bottom-6 right-6 w-14 h-14 rounded-full bg-[#25D366] flex items-center justify-center shadow-lg shadow-[#25D366]/30 hover:scale-110 active:scale-95 transition-all z-50">
+        <MessageCircle className="w-6 h-6 text-white" />
+      </a>
+      </div>
+      );
+      }
 
 function LoginScreen() {
   const { login, register } = useAuth();
@@ -925,23 +923,14 @@ function LoginScreen() {
   React.useEffect(() => {
     const addNotification = () => {
       const fake = fakeNotifications[Math.floor(Math.random() * fakeNotifications.length)];
-      const newNotif = {
-        id: Date.now(),
-        name: fake.name,
-        action: fake.action,
-        time: 'agora',
-        city: fake.city,
-      };
-      setNotifications(prev => [newNotif, ...prev].slice(0, 3));
+      setNotifications(prev => [{ id: Date.now(), ...fake, time: 'agora' }, ...prev].slice(0, 3));
       setVagas(prev => Math.max(1, prev - 1));
     };
-
     const timeout = setTimeout(() => {
       addNotification();
       const interval = setInterval(addNotification, 12000);
       return () => clearInterval(interval);
-    }, 3000);
-
+    }, 4000);
     return () => clearTimeout(timeout);
   }, []);
 
@@ -964,70 +953,16 @@ function LoginScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] flex relative overflow-hidden">
-      {/* LADO ESQUERDO - HERO */}
-      <div className="hidden lg:flex lg:w-[55%] flex-col justify-between p-12 relative">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0A0A0A] via-[#111] to-[#050505]" />
-        <div className="absolute top-0 right-0 w-96 h-96 bg-[#C9A84C]/5 rounded-full blur-[120px]" />
-        <div className="absolute bottom-0 left-0 w-72 h-72 bg-[#C9A84C]/8 rounded-full blur-[100px]" />
-
-        <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-2">
-            <img src="/logo.png" alt="" className="w-10 h-10 rounded-xl object-cover" />
-            <span className="text-[#C9A84C] text-sm font-bold tracking-[0.3em] uppercase">Kernel</span>
-          </div>
-        </div>
-
-        <div className="relative z-10 space-y-8">
-          <div>
-            <div className="inline-flex items-center gap-2 bg-[#C9A84C]/10 border border-[#C9A84C]/20 rounded-full px-4 py-1.5 mb-6">
-              <div className="w-2 h-2 rounded-full bg-[#C9A84C] animate-pulse" />
-              <span className="text-[#C9A84C] text-xs font-semibold">FLASH PROMO — Restam apenas {vagas} vagas</span>
-            </div>
-            <h1 className="text-5xl xl:text-6xl font-display font-bold text-white leading-[1.1] mb-6">
-              A barbearia<br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#C9A84C] to-[#E8C96A]">do futuro,</span><br />
-              começa aqui.
-            </h1>
-            <p className="text-[#777] text-lg max-w-md leading-relaxed">
-              Gestão inteligente com IA, agendamentos automáticos, finance completo e loja integrada. Tudo em uma plataforma.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4 max-w-md">
-            {[
-              { value: '2.847+', label: 'Barbearias' },
-              { value: '98%', label: 'Satisfação' },
-              { value: '4.9', label: 'Avaliação' },
-            ].map((stat) => (
-              <div key={stat.label} className="text-center">
-                <p className="text-2xl font-bold text-white">{stat.value}</p>
-                <p className="text-xs text-[#555] mt-1">{stat.label}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="flex flex-col gap-3 max-w-md">
-            {[
-              { icon: '✦', text: 'IA que agenda, responde e vende por você' },
-              { icon: '⚡', text: 'Dashboard financeiro em tempo real' },
-              { icon: '🛍', text: 'Loja de produtos integrada ao sistema' },
-            ].map((feat) => (
-              <div key={feat.text} className="flex items-center gap-3 bg-[#111] border border-[#1A1A1A] rounded-xl px-4 py-3">
-                <span className="text-lg">{feat.icon}</span>
-                <span className="text-sm text-[#aaa]">{feat.text}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="relative z-10">
-          <p className="text-[11px] text-[#333] tracking-widest uppercase">Enterprise Edition / 2026</p>
+    <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center p-6 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-[#1a1a1a] to-[#0A0A0A] relative">
+      {/* Flash Promo Banner */}
+      <div className="absolute top-0 left-0 right-0 z-20">
+        <div className="bg-gradient-to-r from-[#C9A84C] to-[#E8C96A] text-[#0A0A0A] py-2 px-4 text-center font-bold tracking-wide text-xs">
+          <span className="animate-pulse mr-1">⚡</span> FLASH PROMO — Restam apenas {vagas} vagas
         </div>
       </div>
 
-      {/* NOTIFICAÇÕES FAKE - LADO ESQUERDO INFERIOR */}
-      <div className="hidden lg:block absolute bottom-12 left-12 space-y-2 z-20">
+      {/* Notificações Fake */}
+      <div className="absolute bottom-24 lg:bottom-6 left-6 space-y-2 z-20 max-w-xs">
         <AnimatePresence>
           {notifications.map((notif) => (
             <motion.div
@@ -1035,16 +970,16 @@ function LoginScreen() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.4 }}
-              className="bg-[#111]/90 backdrop-blur-xl border border-[#1E1E1E] rounded-xl px-4 py-3 shadow-2xl max-w-[280px]"
+              transition={{ duration: 0.3 }}
+              className="bg-[#1A1A1A]/90 backdrop-blur-md border border-[#2A2A2A] rounded-xl px-3 py-2 shadow-xl"
             >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#C9A84C] to-[#E8C96A] flex items-center justify-center text-[#0A0A0A] text-xs font-black shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-full bg-[#C9A84C]/20 flex items-center justify-center text-[#C9A84C] text-[10px] font-bold shrink-0">
                   {notif.name.charAt(0)}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[12px] text-white font-semibold truncate">{notif.name} {notif.action}</p>
-                  <p className="text-[10px] text-[#555]">{notif.city} • {notif.time}</p>
+                  <p className="text-[11px] text-white font-semibold truncate">{notif.name} {notif.action}</p>
+                  <p className="text-[9px] text-[#666]">{notif.city} • {notif.time}</p>
                 </div>
               </div>
             </motion.div>
@@ -1052,124 +987,57 @@ function LoginScreen() {
         </AnimatePresence>
       </div>
 
-      {/* LADO DIREITO - FORM */}
-      <div className="w-full lg:w-[45%] flex items-center justify-center p-6 lg:p-12 relative">
-        <div className="absolute inset-0 bg-[#080808] lg:bg-[#0A0A0A]" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#C9A84C]/3 rounded-full blur-[150px]" />
+      {/* Card original - mantido idêntico */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="max-w-md w-full bg-[#141414] border border-[#2A2A2A] rounded-[32px] p-10 text-center shadow-2xl relative overflow-hidden z-10"
+      >
+        <div className="absolute -top-24 -left-24 w-48 h-48 bg-[#C9A84C]/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-[#C9A84C]/5 rounded-full blur-3xl" />
 
-        {/* Banner promo mobile */}
-        <div className="lg:hidden absolute top-0 left-0 right-0 z-20">
-          <div className="bg-gradient-to-r from-[#C9A84C] to-[#E8C96A] text-[#0A0A0A] py-2.5 px-4 text-center font-bold tracking-wide text-xs flex items-center justify-center gap-2">
-            <span className="animate-pulse">⚡</span>
-            FLASH PROMO — Restam {vagas} vagas
-          </div>
-        </div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="max-w-sm w-full relative z-10 lg:pt-0 pt-14"
-        >
-          <div className="lg:hidden flex items-center gap-3 mb-8 justify-center">
-            <img src="/logo.png" alt="" className="w-12 h-12 rounded-2xl object-cover shadow-lg" />
-            <div>
-              <h2 className="text-xl font-display font-bold text-white">KERNEL</h2>
-              <p className="text-[#C9A84C] text-[10px] font-bold tracking-[0.2em]">BARBER SHOPPER</p>
-            </div>
-          </div>
-
-          <div className="mb-8 hidden lg:block">
-            <h2 className="text-2xl font-bold text-white mb-1">
-              {isRegistering ? 'Criar conta' : 'Bem-vindo de volta'}
-            </h2>
-            <p className="text-[#555] text-sm">
-              {isRegistering ? 'Comece seu teste grátis agora' : 'Acesse seu painel premium'}
-            </p>
-          </div>
+        <div className="relative">
+          <img src="/logo.png" alt="KERNEL BARBER SHOPPER" className="w-20 h-20 rounded-3xl object-cover mx-auto mb-8 shadow-2xl shadow-[#C9A84C]/20" />
+          <h1 className="text-3xl font-display font-bold text-white mb-3 tracking-tight">KERNEL BARBER SHOPPER</h1>
+          <p className="text-[#888] text-sm mb-10 font-medium">A gestão de luxo para sua barbearia,<br />agora com inteligência artificial.</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-xs text-[#555] font-medium ml-1 hidden lg:block">Email</label>
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#444]" />
-                <input
-                  type="email"
-                  placeholder="seu@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-[#111] border border-[#1E1E1E] rounded-2xl pl-11 pr-4 py-3.5 text-sm focus:outline-none focus:border-[#C9A84C]/50 focus:ring-1 focus:ring-[#C9A84C]/20 transition-all text-white placeholder-[#333]"
-                  required
-                />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs text-[#555] font-medium ml-1 hidden lg:block">Senha</label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#444]" />
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-[#111] border border-[#1E1E1E] rounded-2xl pl-11 pr-4 py-3.5 text-sm focus:outline-none focus:border-[#C9A84C]/50 focus:ring-1 focus:ring-[#C9A84C]/20 transition-all text-white placeholder-[#333]"
-                  required
-                />
-              </div>
-            </div>
-
-            {error && (
-              <motion.p
-                initial={{ opacity: 0, y: -5 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-red-400 text-xs bg-red-400/5 border border-red-400/10 rounded-xl px-4 py-2"
-              >
-                {error}
-              </motion.p>
-            )}
-
+            <input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#C9A84C] transition-all text-white placeholder-[#555]"
+              required
+            />
+            <input
+              type="password"
+              placeholder="Senha"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#C9A84C] transition-all text-white placeholder-[#555]"
+              required
+            />
+            {error && <p className="text-red-500 text-xs">{error}</p>}
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-[#C9A84C] to-[#E8C96A] text-[#0A0A0A] py-4 rounded-2xl font-bold text-sm hover:shadow-lg hover:shadow-[#C9A84C]/20 hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-50 disabled:hover:scale-100 mt-2"
+              className="w-full bg-[#C9A84C] text-[#0A0A0A] py-4 rounded-2xl font-bold hover:bg-[#E8C96A] hover:scale-[1.02] active:scale-95 transition-all shadow-xl disabled:opacity-50"
             >
-              {loading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-                  Processando...
-                </span>
-              ) : (isRegistering ? 'Criar conta grátis' : 'Entrar')}
+              {loading ? 'Aguarde...' : (isRegistering ? 'Cadastrar' : 'Entrar')}
             </button>
           </form>
 
-          <div className="mt-6 flex items-center gap-3">
-            <div className="flex-1 h-px bg-[#1A1A1A]" />
-            <span className="text-[10px] text-[#333] uppercase tracking-widest">ou</span>
-            <div className="flex-1 h-px bg-[#1A1A1A]" />
-          </div>
-
-          <a
-            href="https://wa.me/5562982093065"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-4 w-full flex items-center justify-center gap-2 bg-[#25D366]/10 border border-[#25D366]/20 text-[#25D366] py-3.5 rounded-2xl font-semibold text-sm hover:bg-[#25D366]/20 transition-all"
-          >
-            <MessageCircle className="w-4 h-4" />
-            Falar com especialista
-          </a>
-
           <button
             onClick={() => { setIsRegistering(!isRegistering); setError(''); }}
-            className="mt-4 w-full text-xs text-[#555] hover:text-[#C9A84C] transition-all py-2"
+            className="mt-4 text-xs text-[#888] hover:text-[#C9A84C] transition-all"
           >
-            {isRegistering ? 'Já tem conta? Entrar' : 'Não tem conta? Cadastre-se grátis'}
+            {isRegistering ? 'Já tem conta? Entrar' : 'Não tem conta? Cadastre-se'}
           </button>
 
-          <p className="mt-6 text-[9px] text-[#222] text-center uppercase tracking-[0.2em]">
-            Enterprise Edition / 2026 — Michael Mariano
-          </p>
-        </motion.div>
-      </div>
+          <p className="mt-8 text-[10px] text-[#555] uppercase font-black tracking-widest">Enterprise Edition / 2026</p>
+        </div>
+      </motion.div>
     </div>
   );
 }
@@ -1959,8 +1827,6 @@ function PricingView() {
   const { user } = useAuth();
   const [pixModal, setPixModal] = React.useState<{open: boolean, brCode?: string, brCodeBase64?: string, checkoutId?: string}>({open: false});
   const [checking, setChecking] = React.useState(false);
-  const [vagasRestantes, setVagasRestantes] = React.useState(12);
-  const [flashVisible, setFlashVisible] = React.useState(true);
 
   React.useEffect(() => {
     const unsub = subscribeToPlans<any>((data) => {
@@ -1968,21 +1834,6 @@ function PricingView() {
       setLoading(false);
     });
     return () => unsub();
-  }, []);
-
-  React.useEffect(() => {
-    const interval = setInterval(() => {
-      setVagasRestantes(prev => {
-        if (prev <= 3) return Math.floor(Math.random() * 3) + 3;
-        return prev - (Math.random() > 0.7 ? 1 : 0);
-      });
-    }, 15000);
-    return () => clearInterval(interval);
-  }, []);
-
-  React.useEffect(() => {
-    const timer = setTimeout(() => setFlashVisible(false), 8000);
-    return () => clearTimeout(timer);
   }, []);
 
   const formatCurrency = (value: number) => {
@@ -1994,7 +1845,7 @@ function PricingView() {
       alert('Faça login para assinar um plano!');
       return;
     }
-
+    
     try {
       setChecking(true);
       const response = await fetch('/api/create-checkout', {
@@ -2007,7 +1858,7 @@ function PricingView() {
           email: user.email,
         }),
       });
-
+      
       const data = await response.json();
       if (data.success) {
         setPixModal({open: true, brCode: data.brCode, brCodeBase64: data.brCodeBase64, checkoutId: data.checkoutId});
@@ -2021,161 +1872,143 @@ function PricingView() {
     }
   };
 
-  const staticPlans = [
-    { name: 'Grátis', price: 0, badge: 'Free', badgeColor: 'bg-green-500', features: ['10 agendamentos/mês', 'Cadastro de até 5 produtos', '1 barbeiro'], cta: 'Começar Grátis', ctaStyle: 'bg-green-500/10 border border-green-500/30 text-green-500 hover:bg-green-500/20' },
-    { name: 'Prata', price: 29.90, badge: 'Prata', badgeColor: 'bg-gray-400', features: ['Agendamentos ilimitados', 'IA Assistente', '3 barbeiros', 'Estoque ilimitado', 'Financeiro completo', 'Loja online (10 produtos)', 'Agendamento online'], cta: 'Assinar', ctaStyle: 'bg-[#1A1A1A] border border-[#2A2A2A] text-white hover:bg-[#222]' },
-    { name: 'Gold', price: 79.90, badge: 'Mais Popular', badgeColor: 'bg-[#C9A84C]', features: ['Agendamentos ilimitados', 'IA Assistente', 'Loja online completa', '5 barbeiros', 'Estoque ilimitado', 'Financeiro completo', 'Suporte prioritário', 'Personalizável com sua marca'], cta: 'Assinar', ctaStyle: 'bg-[#C9A84C] text-[#0A0A0A] hover:bg-[#E8C96A] shadow-lg shadow-[#C9A84C]/20', highlight: true, promo: 'Primeiros 10 levam Kit Profissional Grátis!' },
-    { name: 'Enterprise PRO', price: 129.90, originalPrice: 249.90, badge: 'RECOMENDADO', badgeColor: 'bg-purple-600', features: ['Barbeiros ilimitados', 'Loja online completa', 'IA Assistente', 'Suporte prioritário 24h', 'Gestor de equipe', 'Relatórios avançados', 'Agendamento ilimitado'], cta: 'Garantir Oferta', ctaStyle: 'bg-purple-600 text-white hover:bg-purple-700 shadow-lg shadow-purple-600/20', promo: 'Máquina Personalizada com sua Logo Grátis!' },
-  ];
-
   return (
-    <motion.div
+    <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="max-w-6xl mx-auto space-y-8 py-8"
     >
-      {flashVisible && (
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-[#C9A84C] to-[#E8C96A] text-[#0A0A0A] py-3 px-6 rounded-2xl text-center font-black tracking-wide text-sm flex items-center justify-center gap-3"
-        >
-          <span className="animate-pulse">FLASH PROMO</span>
-          <span className="text-[#0A0A0A]/60">|</span>
-          <span>FIRST {vagasRestantes} SPOTS</span>
-          <span className="text-[#0A0A0A]/60">|</span>
-          <span className="font-mono">{new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-        </motion.div>
-      )}
-
-      <div className="text-center mb-8">
+      <div className="text-center mb-12">
         <h1 className="text-4xl font-display font-bold text-white mb-4">
-          Planos
+          Escolha o Plano Ideal para sua <span className="text-[#C9A84C]">Barbearia</span>
         </h1>
         <p className="text-[#888] text-lg max-w-2xl mx-auto">
-          Escolha o melhor para seu salão
+          Gerencie sua barbearia com inteligência artificial e ferramentas profissionais. Comece grátis!
         </p>
-        <motion.p
-          animate={{ opacity: [0.5, 1, 0.5] }}
-          transition={{ repeat: Infinity, duration: 2 }}
-          className="text-[#C9A84C] text-sm font-bold mt-2"
-        >
-          As primeiras 12 pessoas ganham condições especiais!
-        </motion.p>
       </div>
 
-      <div className="flex items-center justify-center gap-2 mb-4">
-        <span className="text-[#888] text-sm font-bold">Vagas promocionais restantes</span>
-        <div className="flex gap-1">
-          {Array.from({ length: 12 }, (_, i) => (
-            <motion.span
-              key={i}
-              animate={i < vagasRestantes ? { scale: [1, 1.1, 1] } : {}}
-              transition={{ repeat: Infinity, duration: 1, delay: i * 0.05 }}
-              className={cn(
-                "w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-black",
-                i < vagasRestantes
-                  ? "bg-[#C9A84C] text-[#0A0A0A]"
-                  : "bg-[#2A2A2A] text-[#555]"
-              )}
-            >
-              {12 - i}
-            </motion.span>
-          ))}
+      {loading ? (
+        <div className="text-center py-12">
+          <Loader2 className="w-8 h-8 text-[#C9A84C] animate-spin inline" />
         </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-start">
-        {staticPlans.map((plan, i) => (
-          <div
-            key={i}
-            className={cn(
-              "relative bg-[#141414] border rounded-2xl p-6 transition-all hover:scale-[1.02]",
-              plan.highlight ? "border-[#C9A84C] shadow-lg shadow-[#C9A84C]/20" : "border-[#2A2A2A] hover:border-[#3A3A3A]",
-              plan.name === 'Grátis' && "border-green-500/50",
-              plan.name === 'Enterprise PRO' && "border-purple-500/50"
-            )}
-          >
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-              <span className={cn("text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-widest text-white", plan.badgeColor)}>
-                {plan.badge}
-              </span>
-            </div>
-
-            <div className="text-center mb-6">
-              <h3 className="text-xl font-bold text-white mb-2">{plan.name}</h3>
-              <div className="mb-2">
-                {plan.price === 0 ? (
-                  <span className="text-4xl font-bold text-green-400">Grátis</span>
-                ) : (
-                  <>
-                    {plan.originalPrice && (
-                      <span className="text-sm text-[#555] line-through mr-2">R$ {plan.originalPrice.toFixed(2).replace('.', ',')}</span>
-                    )}
-                    <span className="text-4xl font-bold text-[#C9A84C]">
-                      R$ {plan.price.toFixed(2).replace('.', ',')}
-                    </span>
-                    <span className="text-[#888] text-sm ml-1">/mês</span>
-                  </>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-start">
+          {plans.map((plan, i) => {
+            const isFree = plan.price === 0;
+            const isPopular = plan.price === 29.99 || plan.name.toLowerCase().includes('pro');
+            
+            return (
+              <div 
+                key={plan.id || i} 
+                className={cn(
+                  "relative bg-[#141414] border rounded-2xl p-6 transition-all hover:scale-[1.02]",
+                  isPopular ? "border-[#C9A84C] shadow-lg shadow-[#C9A84C]/20" : "border-[#2A2A2A] hover:border-[#3A3A3A]",
+                  isFree && "border-green-500/50"
                 )}
-              </div>
-              {plan.promo && (
-                <motion.p
-                  animate={{ opacity: [0.6, 1, 0.6] }}
-                  transition={{ repeat: Infinity, duration: 2 }}
-                  className="text-[10px] text-[#C9A84C] font-bold"
-                >
-                  {plan.promo}
-                </motion.p>
-              )}
-            </div>
+              >
+                {isPopular && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#C9A84C] text-[#0A0A0A] text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-widest">
+                    Mais Popular
+                  </div>
+                )}
+                {isFree && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-green-500 text-[#0A0A0A] text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-widest">
+                    Grátis
+                  </div>
+                )}
 
-            <div className="space-y-3 mb-6">
-              {plan.features.map((feature, idx) => (
-                <div key={idx} className="flex items-center gap-2 text-sm text-[#eee]">
-                  <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
-                  {feature}
+                <div className="text-center mb-6">
+                  <h3 className="text-xl font-bold text-white mb-2">{plan.name}</h3>
+                  <div className="mb-2">
+                    {isFree ? (
+                      <span className="text-4xl font-bold text-green-400">Grátis</span>
+                    ) : (
+                      <>
+                        <span className="text-4xl font-bold text-[#C9A84C]">
+                          {formatCurrency(plan.price).replace(',', ',')}
+                        </span>
+                        <span className="text-[#888] text-sm ml-1">
+                          /{plan.interval === 'yearly' ? 'ano' : 'mês'}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                  {plan.trialDays > 0 && (
+                    <p className="text-[10px] text-[#C9A84C] font-bold">
+                      {plan.trialDays} dias grátis
+                    </p>
+                  )}
                 </div>
-              ))}
-            </div>
 
-            <button
-              onClick={() => {
-                if (plan.price === 0) return;
-                const firebasePlan = plans.find(p => p.name?.toLowerCase().includes(plan.name.toLowerCase().replace(' enterprise', '').replace(' pro', '').trim()));
-                if (firebasePlan) handleSelectPlan(firebasePlan);
-                else alert('Faça login para assinar!');
-              }}
-              disabled={checking}
-              className={cn("w-full py-3 rounded-xl font-bold text-sm transition-all", plan.ctaStyle, checking && "opacity-50 cursor-not-allowed")}
-            >
-              {checking ? (
-                <span className="flex items-center justify-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Processando...
-                </span>
-              ) : plan.price === 0 ? (
-                <span className="flex items-center justify-center gap-2">
-                  <Gift className="w-4 h-4" />
-                  {plan.cta}
-                </span>
-              ) : (
-                <span className="flex items-center justify-center gap-2">
-                  <Zap className="w-4 h-4" />
-                  {plan.cta}
-                </span>
-              )}
-            </button>
-          </div>
-        ))}
-      </div>
+                <div className="space-y-3 mb-6">
+                  {plan.features?.map((feature: string, idx: number) => (
+                    <div key={idx} className="flex items-center gap-2 text-sm text-[#eee]">
+                      <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
+                      {feature}
+                    </div>
+                  ))}
+                  {plan.maxBarbers > 0 && (
+                    <div className="flex items-center gap-2 text-sm text-[#eee]">
+                      <Users className="w-4 h-4 text-[#C9A84C] shrink-0" />
+                      Até {plan.maxBarbers} barbeiro{plan.maxBarbers > 1 ? 's' : ''}
+                    </div>
+                  )}
+                  {plan.hasAI && (
+                    <div className="flex items-center gap-2 text-sm text-[#eee]">
+                      <Bot className="w-4 h-4 text-[#C9A84C] shrink-0" />
+                      IA Assistente inclusa
+                    </div>
+                  )}
+                  {plan.hasReports && (
+                    <div className="flex items-center gap-2 text-sm text-[#eee]">
+                      <TrendingUp className="w-4 h-4 text-[#C9A84C] shrink-0" />
+                      Relatórios avançados
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => handleSelectPlan(plan)}
+                  disabled={checking}
+                  className={cn(
+                    "w-full py-3 rounded-xl font-bold text-sm transition-all",
+                    isFree 
+                      ? "bg-green-500/10 border border-green-500/30 text-green-500 hover:bg-green-500/20"
+                      : isPopular
+                        ? "bg-[#C9A84C] text-[#0A0A0A] hover:bg-[#E8C96A] shadow-lg shadow-[#C9A84C]/20"
+                        : "bg-[#1A1A1A] border border-[#2A2A2A] text-white hover:bg-[#222]",
+                    checking && "opacity-50 cursor-not-allowed"
+                  )}
+                >
+                  {checking ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Processando...
+                    </span>
+                  ) : isFree ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Gift className="w-4 h-4" />
+                      Começar Grátis
+                    </span>
+                  ) : (
+                    <span className="flex items-center justify-center gap-2">
+                      <Zap className="w-4 h-4" />
+                      Assinar Agora
+                    </span>
+                  )}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <div className="mt-12 bg-[#141414] border border-[#2A2A2A] rounded-2xl p-8 text-center">
         <h3 className="text-xl font-bold text-white mb-4">Precisa de algo personalizado?</h3>
         <p className="text-[#888] mb-6">Para barbearias com múltiplas unidades ou necessidades específicas.</p>
-        <a href="https://wa.me/5562982093065" target="_blank" rel="noopener noreferrer" className="bg-[#1A1A1A] border border-[#C9A84C]/30 text-[#C9A84C] px-6 py-3 rounded-xl font-bold text-sm hover:bg-[#C9A84C]/10 transition-all inline-block">
-          Fale com Vendas
-        </a>
+          <a href="https://wa.me/5562982093065" target="_blank" rel="noopener noreferrer" className="bg-[#1A1A1A] border border-[#C9A84C]/30 text-[#C9A84C] px-6 py-3 rounded-xl font-bold text-sm hover:bg-[#C9A84C]/10 transition-all inline-block">
+            Fale com Vendas
+          </a>
       </div>
 
       {pixModal.open && (
