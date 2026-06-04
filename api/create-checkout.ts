@@ -1,11 +1,4 @@
-const ASAAS_API_URL = 'https://api.asaas.com/v3';
-const ASAAS_SANDBOX_URL = 'https://sandbox.asaas.com/api/v3';
-
-function getBaseUrl() {
-  const key = process.env.ASAAS_API_KEY || '';
-  if (key.startsWith('$aact_')) return ASAAS_SANDBOX_URL;
-  return ASAAS_API_URL;
-}
+﻿const ASAAS_API_URL = 'https://api.asaas.com/v3';
 
 export default async function handler(req: Request) {
   if (req.method !== 'POST') {
@@ -22,7 +15,6 @@ export default async function handler(req: Request) {
 
   try {
     const { planId, planName, amount, email } = await req.json();
-    const baseUrl = getBaseUrl();
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'access_token': apiKey,
@@ -31,21 +23,22 @@ export default async function handler(req: Request) {
     // Step 1: Create or find customer
     let customerId = '';
     try {
-      const custRes = await fetch(`${baseUrl}/customers?email=${encodeURIComponent(email)}`, { headers });
+      const custRes = await fetch(`${ASAAS_API_URL}/customers?email=${encodeURIComponent(email)}`, { headers, signal: AbortSignal.timeout(10000) });
       const custData = await custRes.json();
       if (custData.data && custData.data.length > 0) {
         customerId = custData.data[0].id;
       }
-    } catch (_) { /* no existing customer, create new */ }
+    } catch (_) { /* no existing customer */ }
 
     if (!customerId) {
-      const createCustRes = await fetch(`${baseUrl}/customers`, {
+      const createCustRes = await fetch(`${ASAAS_API_URL}/customers`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
           name: email.split('@')[0],
           email: email,
         }),
+        signal: AbortSignal.timeout(10000),
       });
       const createCustData = await createCustRes.json();
       if (!createCustData.id) {
@@ -55,7 +48,7 @@ export default async function handler(req: Request) {
     }
 
     // Step 2: Create PIX payment
-    const paymentRes = await fetch(`${baseUrl}/payments`, {
+    const paymentRes = await fetch(`${ASAAS_API_URL}/payments`, {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -65,6 +58,7 @@ export default async function handler(req: Request) {
         description: `Plano ${planName} - Kernel Barber Shopper`,
         externalReference: planId,
       }),
+      signal: AbortSignal.timeout(10000),
     });
     const paymentData = await paymentRes.json();
     if (!paymentData.id) {
@@ -72,7 +66,7 @@ export default async function handler(req: Request) {
     }
 
     // Step 3: Get PIX QR Code
-    const qrRes = await fetch(`${baseUrl}/payments/${paymentData.id}/pixQrCode`, { headers });
+    const qrRes = await fetch(`${ASAAS_API_URL}/payments/${paymentData.id}/pixQrCode`, { headers, signal: AbortSignal.timeout(10000) });
     const qrData = await qrRes.json();
     if (!qrData.payload) {
       throw new Error('Failed to get PIX QR code: ' + JSON.stringify(qrData));
