@@ -1140,52 +1140,36 @@ function LoginScreen() {
                       </div>
                     )}
 
-                    <div className="text-center mb-6">
-                      <h3 className="text-xl font-bold text-white mb-2">{plan.name}</h3>
-                      <div className="mb-2">
-                        {isFree ? (
-                          <span className="text-4xl font-bold text-green-400">Grátis</span>
-                        ) : (
-                          <>
-                            {plan.originalPrice && (
-                              <span className="text-sm text-[#555] line-through mr-2">{formatCurrency(plan.originalPrice)}</span>
-                            )}
-                            <span className="text-4xl font-bold text-[#C9A84C]">{formatCurrency(plan.price)}</span>
-                            <span className="text-[#888] text-sm ml-1">/{plan.interval}</span>
-                          </>
-                        )}
-                      </div>
-                      {plan.trialDays > 0 && (
-                        <p className="text-[10px] text-[#C9A84C] font-bold">{plan.trialDays} dias grátis</p>
-                      )}
+            <div className="text-center mb-6">
+              <h3 className="text-xl font-bold text-white mb-2">{plan.name}</h3>
+              <div className="mb-2">
+                {isFree ? (
+                  <span className="text-3xl font-bold text-green-400">Grátis</span>
+                ) : (
+                  <div className="flex flex-col items-center">
+                    {plan.originalPrice && (
+                      <span className="text-xs text-[#555] line-through">{formatCurrency(plan.originalPrice)}</span>
+                    )}
+                    <div>
+                      <span className="text-3xl font-bold text-[#C9A84C]">{formatCurrency(plan.price)}</span>
+                      <span className="text-[#888] text-sm">/{plan.interval}</span>
                     </div>
+                  </div>
+                )}
+              </div>
+              {plan.trialDays > 0 && (
+                <p className="text-[10px] text-[#C9A84C] font-bold">{plan.trialDays} dias grátis</p>
+              )}
+            </div>
 
-                    <div className="space-y-3 mb-6">
-                      {plan.features.map((feature, idx) => (
-                        <div key={idx} className="flex items-center gap-2 text-sm text-[#eee]">
-                          <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
-                          {feature}
-                        </div>
-                      ))}
-                      {plan.maxBarbers > 0 && plan.maxBarbers < 999 && (
-                        <div className="flex items-center gap-2 text-sm text-[#eee]">
-                          <Users className="w-4 h-4 text-[#C9A84C] shrink-0" />
-                          Até {plan.maxBarbers} barbeiro{plan.maxBarbers > 1 ? 's' : ''}
-                        </div>
-                      )}
-                      {plan.hasAI && (
-                        <div className="flex items-center gap-2 text-sm text-[#eee]">
-                          <Bot className="w-4 h-4 text-[#C9A84C] shrink-0" />
-                          IA Assistente inclusa
-                        </div>
-                      )}
-                      {plan.hasReports && (
-                        <div className="flex items-center gap-2 text-sm text-[#eee]">
-                          <TrendingUp className="w-4 h-4 text-[#C9A84C] shrink-0" />
-                          Relatórios avançados
-                        </div>
-                      )}
-                    </div>
+            <div className="space-y-3 mb-6">
+              {plan.features.map((feature, idx) => (
+                <div key={idx} className="flex items-center gap-2 text-sm text-[#eee]">
+                  <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
+                  {feature}
+                </div>
+              ))}
+            </div>
 
                     <button
                       onClick={() => handleSelectPlan(plan)}
