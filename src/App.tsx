@@ -1017,9 +1017,8 @@ function LoginScreen() {
       setSelectedPlan(plan);
       return;
     }
+    setPixModal({open: true, planName: plan.name, amount: plan.price});
     try {
-      setChecking(true);
-      setError('');
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
       const response = await fetch('/api/create-checkout', {
@@ -1037,14 +1036,9 @@ function LoginScreen() {
       const data = await response.json();
       if (data.success && data.brCode) {
         setPixModal({open: true, brCode: data.brCode, brCodeBase64: data.brCodeBase64, checkoutId: data.checkoutId, planName: plan.name, amount: plan.price});
-      } else {
-        setPixModal({open: true, planName: plan.name, amount: plan.price});
       }
-    } catch (error: any) {
-      setPixModal({open: true, planName: plan.name, amount: plan.price});
-    } finally {
-      setChecking(false);
-    }
+    } catch (_) { /* fallback WhatsApp already shown */ }
+    setChecking(false);
   };
 
   const handleRegisterAfterPayment = async () => {
@@ -2244,8 +2238,8 @@ function PricingView() {
       return;
     }
 
+    setPixModal({open: true});
     try {
-      setChecking(true);
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
       const response = await fetch('/api/create-checkout', {
@@ -2264,14 +2258,9 @@ function PricingView() {
       const data = await response.json();
       if (data.success && data.brCode) {
         setPixModal({open: true, brCode: data.brCode, brCodeBase64: data.brCodeBase64, checkoutId: data.checkoutId});
-      } else {
-        setPixModal({open: true});
       }
-    } catch (error: any) {
-      setPixModal({open: true});
-    } finally {
-      setChecking(false);
-    }
+    } catch (_) { /* fallback WhatsApp already shown */ }
+    setChecking(false);
   };
 
   return (
