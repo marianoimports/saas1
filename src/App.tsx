@@ -1019,6 +1019,7 @@ function LoginScreen() {
     }
     try {
       setChecking(true);
+      setError('');
       const response = await fetch('/api/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1033,10 +1034,10 @@ function LoginScreen() {
       if (data.success) {
         setPixModal({open: true, brCode: data.brCode, brCodeBase64: data.brCodeBase64, checkoutId: data.checkoutId, planName: plan.name, amount: plan.price});
       } else {
-        setError('Erro ao criar checkout: ' + data.error);
+        setPixModal({open: true, planName: plan.name, amount: plan.price});
       }
     } catch (error: any) {
-      setError('Erro ao processar pagamento: ' + error.message);
+      setPixModal({open: true, planName: plan.name, amount: plan.price});
     } finally {
       setChecking(false);
     }
@@ -1222,60 +1223,79 @@ function LoginScreen() {
           </div>
         </div>
 
-        {pixModal.open && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setPixModal({open: false})}>
-            <div className="bg-[#141414] border border-[#2A2A2A] rounded-2xl p-8 max-w-md w-full" onClick={e => e.stopPropagation()}>
-              <div className="text-center mb-6">
-                <h3 className="text-xl font-bold text-white mb-1">Pague com PIX</h3>
-                <p className="text-[#C9A84C] text-sm font-bold">{pixModal.planName} — {pixModal.amount && formatCurrency(pixModal.amount)}</p>
-              </div>
-              <div className="flex flex-col items-center gap-4">
-                {pixModal.brCodeBase64 && (
+      {pixModal.open && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setPixModal({open: false})}>
+          <div className="bg-[#141414] border border-[#2A2A2A] rounded-2xl p-8 max-w-md w-full" onClick={e => e.stopPropagation()}>
+            <div className="text-center mb-6">
+              <h3 className="text-xl font-bold text-white mb-1">Pague com PIX</h3>
+              <p className="text-[#C9A84C] text-sm font-bold">{pixModal.planName} — {pixModal.amount && formatCurrency(pixModal.amount)}</p>
+            </div>
+            <div className="flex flex-col items-center gap-4">
+              {pixModal.brCodeBase64 ? (
+                <>
                   <img src={pixModal.brCodeBase64} alt="QR Code PIX" className="w-48 h-48 bg-white p-2 rounded-lg" />
-                )}
-                <p className="text-[#888] text-sm text-center">Escaneie o QR Code ou copie o código abaixo</p>
-                <div className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg p-3">
-                  <code className="text-[#C9A84C] text-xs break-all">{pixModal.brCode}</code>
-                </div>
-                <button
-                  onClick={() => navigator.clipboard.writeText(pixModal.brCode || '')}
-                  className="bg-[#1A1A1A] border border-[#2A2A2A] text-white px-4 py-2 rounded-lg text-sm hover:bg-[#222] transition-all w-full"
-                >
-                  Copiar Código PIX
-                </button>
-
-                <div className="w-full border-t border-[#2A2A2A] pt-4 mt-2">
-                  <p className="text-xs text-[#888] text-center mb-3">Após o pagamento, crie sua conta:</p>
-                  <input
-                    type="email"
-                    placeholder="Seu email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#C9A84C] transition-all text-white placeholder-[#555] mb-2"
-                  />
-                  <input
-                    type="password"
-                    placeholder="Crie uma senha"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#C9A84C] transition-all text-white placeholder-[#555] mb-3"
-                  />
-                  {error && <p className="text-red-500 text-xs mb-2">{error}</p>}
+                  <p className="text-[#888] text-sm text-center">Escaneie o QR Code ou copie o código abaixo</p>
+                  <div className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg p-3">
+                    <code className="text-[#C9A84C] text-xs break-all">{pixModal.brCode}</code>
+                  </div>
                   <button
-                    onClick={handleRegisterAfterPayment}
-                    disabled={loading}
-                    className="w-full bg-[#C9A84C] text-[#0A0A0A] py-3 rounded-xl font-bold hover:bg-[#E8C96A] transition-all disabled:opacity-50"
+                    onClick={() => navigator.clipboard.writeText(pixModal.brCode || '')}
+                    className="bg-[#1A1A1A] border border-[#2A2A2A] text-white px-4 py-2 rounded-lg text-sm hover:bg-[#222] transition-all w-full"
                   >
-                    {loading ? 'Criando conta...' : 'Criar minha conta'}
+                    Copiar Código PIX
                   </button>
-                </div>
+                </>
+              ) : (
+                <>
+                  <div className="w-20 h-20 rounded-full bg-[#25D366]/10 flex items-center justify-center mb-2">
+                    <MessageCircle className="w-10 h-10 text-[#25D366]" />
+                  </div>
+                  <p className="text-white text-sm font-bold text-center">Finalize o pagamento via WhatsApp</p>
+                  <p className="text-[#888] text-xs text-center">Clique no botão abaixo para receber o QR Code PIX e confirmar sua assinatura</p>
+                  <a
+                    href={`https://wa.me/5562982093065?text=Olá! Quero assinar o plano ${pixModal.planName} (${pixModal.amount && formatCurrency(pixModal.amount)}/mês)`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full bg-[#25D366] text-white py-3 rounded-xl font-bold text-sm hover:bg-[#20c05c] transition-all flex items-center justify-center gap-2"
+                  >
+                    <MessageCircle className="w-5 h-5" />
+                    Pagar via WhatsApp
+                  </a>
+                </>
+              )}
 
+              <div className="w-full border-t border-[#2A2A2A] pt-4 mt-2">
+                <p className="text-xs text-[#888] text-center mb-3">Após o pagamento, crie sua conta:</p>
+                <input
+                  type="email"
+                  placeholder="Seu email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#C9A84C] transition-all text-white placeholder-[#555] mb-2"
+                />
+                <input
+                  type="password"
+                  placeholder="Crie uma senha"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#C9A84C] transition-all text-white placeholder-[#555] mb-3"
+                />
+                {error && <p className="text-red-500 text-xs mb-2">{error}</p>}
                 <button
-                  onClick={() => setPixModal({open: false})}
-                  className="text-[#888] text-sm hover:text-white transition-all"
+                  onClick={handleRegisterAfterPayment}
+                  disabled={loading}
+                  className="w-full bg-[#C9A84C] text-[#0A0A0A] py-3 rounded-xl font-bold hover:bg-[#E8C96A] transition-all disabled:opacity-50"
                 >
-                  Fechar
+                  {loading ? 'Criando conta...' : 'Criar minha conta'}
                 </button>
+              </div>
+
+              <button
+                onClick={() => setPixModal({open: false})}
+                className="text-[#888] text-sm hover:text-white transition-all"
+              >
+                Fechar
+              </button>
               </div>
             </div>
           </div>
