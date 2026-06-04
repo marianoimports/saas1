@@ -1020,6 +1020,8 @@ function LoginScreen() {
     try {
       setChecking(true);
       setError('');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
       const response = await fetch('/api/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1029,9 +1031,11 @@ function LoginScreen() {
           amount: Math.round(plan.price * 100),
           email: email || 'pending@register.com',
         }),
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
       const data = await response.json();
-      if (data.success) {
+      if (data.success && data.brCode) {
         setPixModal({open: true, brCode: data.brCode, brCodeBase64: data.brCodeBase64, checkoutId: data.checkoutId, planName: plan.name, amount: plan.price});
       } else {
         setPixModal({open: true, planName: plan.name, amount: plan.price});
@@ -2239,9 +2243,11 @@ function PricingView() {
       alert('Faça login para assinar um plano!');
       return;
     }
-    
+
     try {
       setChecking(true);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
       const response = await fetch('/api/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2251,16 +2257,18 @@ function PricingView() {
           amount: Math.round(plan.price * 100),
           email: user.email,
         }),
+        signal: controller.signal,
       });
-      
+      clearTimeout(timeoutId);
+
       const data = await response.json();
-      if (data.success) {
+      if (data.success && data.brCode) {
         setPixModal({open: true, brCode: data.brCode, brCodeBase64: data.brCodeBase64, checkoutId: data.checkoutId});
       } else {
-        alert('Erro ao criar checkout: ' + data.error);
+        setPixModal({open: true});
       }
     } catch (error: any) {
-      alert('Erro ao processar pagamento: ' + error.message);
+      setPixModal({open: true});
     } finally {
       setChecking(false);
     }
