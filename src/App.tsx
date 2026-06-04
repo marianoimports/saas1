@@ -79,13 +79,14 @@ function MainApp() {
   // SIMPLE: Force admin true for this specific email - nothing else matters
   const isAdminFinal = user?.email === 'michaelmarianodasilva81@gmail.com' ? true : (isAdmin || false);
   
-  const [activeView, setActiveView] = React.useState<View>(() => {
-    if (typeof window !== 'undefined' && localStorage.getItem('redirectToPricing')) {
+  const [activeView, setActiveView] = React.useState<View>('dashboard');
+
+  React.useEffect(() => {
+    if (localStorage.getItem('redirectToPricing')) {
       localStorage.removeItem('redirectToPricing');
-      return 'pricing';
+      setActiveView('pricing');
     }
-    return 'dashboard';
-  });
+  }, []);
   const [messages, setMessages] = React.useState<Message[]>([
     {
       role: 'ia',
