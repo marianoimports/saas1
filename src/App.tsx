@@ -909,8 +909,23 @@ function LoginScreen() {
   const [loading, setLoading] = React.useState(false);
   const [notifications, setNotifications] = React.useState<{id: number, name: string, action: string, time: string, city: string}[]>([]);
   const [vagas, setVagas] = React.useState(12);
-  const [pixModal, setPixModal] = React.useState<{open: boolean, brCode?: string, brCodeBase64?: string, checkoutId?: string, planName?: string, amount?: number, needsCpf?: boolean, cpfCnpj?: string, name?: string}>({open: false});
+  const [pixModal, setPixModal] = React.useState<{open: boolean, brCode?: string, brCodeBase64?: string, checkoutId?: string, planName?: string, amount?: number, needsCpf?: boolean, cpfCnpj?: string, name?: string, paid?: boolean}>({open: false});
   const [checking, setChecking] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!pixModal.open || !pixModal.checkoutId || pixModal.needsCpf || pixModal.paid) return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/check-payment?paymentId=${pixModal.checkoutId}`);
+        const data = await res.json();
+        if (data.status === 'confirmed') {
+          setPixModal(prev => ({...prev, paid: true}));
+          clearInterval(interval);
+        }
+      } catch (_) {}
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [pixModal.open, pixModal.checkoutId, pixModal.needsCpf, pixModal.paid]);
 
   const plans = [
     {
@@ -1234,11 +1249,19 @@ function LoginScreen() {
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setPixModal({open: false})}>
           <div className="bg-[#141414] border border-[#2A2A2A] rounded-2xl p-8 max-w-md w-full" onClick={e => e.stopPropagation()}>
             <div className="text-center mb-6">
-              <h3 className="text-xl font-bold text-white mb-1">Pague com PIX</h3>
-              <p className="text-[#C9A84C] text-sm font-bold">{pixModal.planName} — {pixModal.amount && formatCurrency(pixModal.amount)}</p>
-            </div>
-            <div className="flex flex-col items-center gap-4">
-              {pixModal.needsCpf ? (
+<h3 className="text-xl font-bold text-white mb-1">Pague com PIX</h3>
+          <p className="text-[#C9A84C] text-sm font-bold">{pixModal.planName} — {pixModal.amount && formatCurrency(pixModal.amount)}</p>
+        </div>
+        <div className="flex flex-col items-center gap-4">
+          {pixModal.paid ? (
+            <>
+              <div className="w-20 h-20 rounded-full bg-green-500/10 flex items-center justify-center mb-2">
+                <CheckCircle className="w-10 h-10 text-green-400" />
+              </div>
+              <p className="text-green-400 text-lg font-bold text-center">Pagamento Confirmado!</p>
+              <p className="text-[#888] text-sm text-center">Seu plano {pixModal.planName} está ativo. Crie sua conta abaixo.</p>
+            </>
+          ) : pixModal.needsCpf ? (
                 <>
                   <p className="text-[#888] text-sm text-center">Informe seus dados para gerar o QR Code PIX</p>
                   <input
@@ -2252,8 +2275,23 @@ function PricingView() {
   const [plans, setPlans] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
   const { user } = useAuth();
-  const [pixModal, setPixModal] = React.useState<{open: boolean, brCode?: string, brCodeBase64?: string, checkoutId?: string, needsCpf?: boolean, planName?: string, amount?: number, cpfCnpj?: string, name?: string}>({open: false});
+  const [pixModal, setPixModal] = React.useState<{open: boolean, brCode?: string, brCodeBase64?: string, checkoutId?: string, needsCpf?: boolean, planName?: string, amount?: number, cpfCnpj?: string, name?: string, paid?: boolean}>({open: false});
   const [checking, setChecking] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!pixModal.open || !pixModal.checkoutId || pixModal.needsCpf || pixModal.paid) return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/check-payment?paymentId=${pixModal.checkoutId}`);
+        const data = await res.json();
+        if (data.status === 'confirmed') {
+          setPixModal(prev => ({...prev, paid: true}));
+          clearInterval(interval);
+        }
+      } catch (_) {}
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [pixModal.open, pixModal.checkoutId, pixModal.needsCpf, pixModal.paid]);
 
   React.useEffect(() => {
     const unsub = subscribeToPlans<any>((data) => {
@@ -2448,7 +2486,15 @@ function PricingView() {
           <div className="bg-[#141414] border border-[#2A2A2A] rounded-2xl p-8 max-w-md w-full mx-4" onClick={e => e.stopPropagation()}>
             <h3 className="text-xl font-bold text-white mb-4 text-center">Pague com PIX</h3>
             <div className="flex flex-col items-center gap-4">
-              {pixModal.needsCpf ? (
+              {pixModal.paid ? (
+                <>
+                  <div className="w-20 h-20 rounded-full bg-green-500/10 flex items-center justify-center mb-2">
+                    <CheckCircle className="w-10 h-10 text-green-400" />
+                  </div>
+                  <p className="text-green-400 text-lg font-bold text-center">Pagamento Confirmado!</p>
+                  <p className="text-[#888] text-sm text-center">Seu plano {pixModal.planName} está ativo.</p>
+                </>
+              ) : pixModal.needsCpf ? (
                 <>
                   <p className="text-[#888] text-sm text-center">Informe seus dados para gerar o QR Code PIX</p>
                   <input

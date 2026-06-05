@@ -1,6 +1,49 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 const ASAAS_API_URL = 'https://api.asaas.com/v3';
+const FIREBASE_PROJECT = 'project-ff9afd94-4578-4636-904';
+
+function firestoreUrl(path: string) {
+  return `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents${path}`;
+}
+
+function toFields(obj: Record<string, any>) {
+  const fields: Record<string, any> = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (typeof v === 'string') fields[k] = { stringValue: v };
+    else if (typeof v === 'number') fields[k] = { integerValue: String(v) };
+    else if (typeof v === 'boolean') fields[k] = { booleanValue: v };
+    else fields[k] = { stringValue: JSON.stringify(v) };
+  }
+  return { fields };
+}
+
+async function getAccessToken(sa: any) {
+  const now = Math.floor(Date.now() / 1000);
+  const header = { alg: 'RS256', typ: 'JWT' };
+  const payload = {
+    iss: sa.client_email,
+    scope: 'https://www.googleapis.com/auth/datastore',
+    aud: 'https://oauth2.googleapis.com/token',
+    iat: now,
+    exp: now + 3600,
+  };
+  const b64 = (s: string) => Buffer.from(s).toString('base64url');
+  const { createSign } = await import('crypto');
+  const sigInput = `${b64(JSON.stringify(header))}.${b64(JSON.stringify(payload))}`;
+  const signer = createSign('RSA-SHA256');
+  signer.update(sigInput);
+  signer.end();
+  const sig = signer.sign(sa.private_key, 'base64url');
+  const jwt = `${sigInput}.${sig}`;
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
+  });
+  const data: any = await res.json();
+  return data.access_token;
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -8,6 +51,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const apiKey = process.env.ASAAS_API_KEY;
+  const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
   if (!apiKey) {
     return res.status(500).json({ success: false, error: 'ASAAS_API_KEY not configured' });
   }
@@ -73,19 +117,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ success: false, error: 'Asaas payment create failed', details: paymentData });
     }
 
-  await new Promise((r) => setTimeout(r, 2000));
+    if (serviceAccountJson) {
+      try {
+        const sa = JSON.parse(serviceAccountJson);
+        const token = await getAccessToken(sa);
+        await fetch(firestoreUrl(`/payments/${paymentData.id}`), {
+          method: 'PATCH',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(toFields({
+            email: email,
+            planName: planName || planId,
+            amount: String(amount),
+            asaasCustomerId: customerId,
+            status: 'pending',
+            createdAt: new Date().toISOString(),
+          })),
+        });
+      } catch (e: any) {
+        console.error('Failed to save payment doc to Firestore:', e.message);
+      }
+    }
 
-  let qrData: any = null;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const qrRes = await fetch(`${ASAAS_API_URL}/payments/${paymentData.id}/pixQrCode`, { headers, signal: AbortSignal.timeout(10000) });
-    qrData = await qrRes.json();
-    if (qrData.payload) break;
-    if (attempt < 2) await new Promise((r) => setTimeout(r, 2000));
-  }
+    await new Promise((r) => setTimeout(r, 2000));
 
-  if (!qrData || !qrData.payload) {
-    return res.status(200).json({ success: false, error: 'PIX QR code failed', details: qrData });
-  }
+    let qrData: any = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const qrRes = await fetch(`${ASAAS_API_URL}/payments/${paymentData.id}/pixQrCode`, { headers, signal: AbortSignal.timeout(10000) });
+      qrData = await qrRes.json();
+      if (qrData.payload) break;
+      if (attempt < 2) await new Promise((r) => setTimeout(r, 2000));
+    }
+
+    if (!qrData || !qrData.payload) {
+      return res.status(200).json({ success: false, error: 'PIX QR code failed', details: qrData });
+    }
 
     return res.status(200).json({
       success: true,
