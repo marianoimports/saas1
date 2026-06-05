@@ -80,8 +80,19 @@ async function findUserByEmail(token: string, email: string) {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method === 'GET') {
+    return res.status(200).json({ message: 'Webhook is active' });
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const webhookToken = process.env.ASAAS_WEBHOOK_TOKEN;
+  const providedToken = req.headers['asaas-access_token'] || req.headers['asaas-access-token'] || req.query['token'];
+
+  if (webhookToken && providedToken !== webhookToken) {
+    return res.status(401).json({ error: 'Invalid webhook token' });
   }
 
   const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;

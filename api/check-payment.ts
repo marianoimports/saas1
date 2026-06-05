@@ -1,7 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-const FIREBASE_PROJECT = 'project-ff9afd94-4578-4636-904';
-const FIREBASE_API_KEY = 'AIzaSyCpOTDbzwqiHyO3DEbg5Z4VKDSYa-1k3mA';
+const ASAAS_API_URL = 'https://api.asaas.com/v3';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
@@ -13,21 +12,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'Missing paymentId' });
   }
 
-  try {
-    const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/payments/${paymentId}?key=${FIREBASE_API_KEY}`;
-    const docRes = await fetch(url, { signal: AbortSignal.timeout(8000) });
-    const docData: any = await docRes.json();
+  const apiKey = process.env.ASAAS_API_KEY;
+  if (!apiKey) {
+    return res.status(500).json({ error: 'ASAAS_API_KEY not configured' });
+  }
 
-    if (!docData.fields) {
+  try {
+    const paymentRes = await fetch(`${ASAAS_API_URL}/payments/${paymentId}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        'access_token': apiKey,
+      },
+      signal: AbortSignal.timeout(8000),
+    });
+    const paymentData: any = await paymentRes.json();
+
+    if (!paymentData.id) {
       return res.status(200).json({ status: 'unknown' });
     }
 
-    const status = docData.fields.status?.stringValue || 'pending';
+    const isConfirmed = paymentData.status === 'RECEIVED' || paymentData.status === 'CONFIRMED';
 
     return res.status(200).json({
-      status: status,
-      plan: docData.fields.planName?.stringValue || '',
-      paidAt: docData.fields.paidAt?.stringValue || '',
+      status: isConfirmed ? 'confirmed' : paymentData.status?.toLowerCase() || 'pending',
+      plan: paymentData.description || '',
+      value: paymentData.value || 0,
     });
   } catch (error: any) {
     return res.status(200).json({ status: 'unknown', error: error.message });
