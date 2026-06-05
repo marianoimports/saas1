@@ -9,7 +9,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const apiKey = process.env.ASAAS_API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ success: false, error: 'ASAAS_API_KEY not configured' });
+    return res.status(500).json({ success: false, error: 'ASAAS_API_KEY not configured', debug: { hasKey: false } });
   }
 
   try {
@@ -39,7 +39,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
       const createCustData: any = await createCustRes.json();
       if (!createCustData.id) {
-        return res.status(500).json({ success: false, error: 'Asaas customer error: ' + JSON.stringify(createCustData), step: 'create_customer' });
+        return res.status(500).json({ success: false, error: 'Asaas customer error', details: createCustData, step: 'create_customer', keyPrefix: apiKey.substring(0, 12) });
       }
       customerId = createCustData.id;
     }
@@ -58,13 +58,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
     const paymentData: any = await paymentRes.json();
     if (!paymentData.id) {
-      return res.status(500).json({ success: false, error: 'Asaas payment error: ' + JSON.stringify(paymentData), step: 'create_payment' });
+      return res.status(500).json({ success: false, error: 'Asaas payment error', details: paymentData, step: 'create_payment' });
     }
 
     const qrRes = await fetch(`${ASAAS_API_URL}/payments/${paymentData.id}/pixQrCode`, { headers, signal: AbortSignal.timeout(10000) });
     const qrData: any = await qrRes.json();
     if (!qrData.payload) {
-      return res.status(500).json({ success: false, error: 'PIX QR error: ' + JSON.stringify(qrData), step: 'get_qr' });
+      return res.status(500).json({ success: false, error: 'PIX QR error', details: qrData, step: 'get_qr' });
     }
 
     return res.status(200).json({
