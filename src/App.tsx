@@ -909,7 +909,7 @@ function LoginScreen() {
   const [loading, setLoading] = React.useState(false);
   const [notifications, setNotifications] = React.useState<{id: number, name: string, action: string, time: string, city: string}[]>([]);
   const [vagas, setVagas] = React.useState(12);
-  const [pixModal, setPixModal] = React.useState<{open: boolean, brCode?: string, brCodeBase64?: string, checkoutId?: string, planName?: string, amount?: number}>({open: false});
+  const [pixModal, setPixModal] = React.useState<{open: boolean, brCode?: string, brCodeBase64?: string, checkoutId?: string, planName?: string, amount?: number, needsCpf?: boolean, cpfCnpj?: string, name?: string}>({open: false});
   const [checking, setChecking] = React.useState(false);
 
   const plans = [
@@ -1017,26 +1017,35 @@ function LoginScreen() {
       setSelectedPlan(plan);
       return;
     }
+    setPixModal({open: true, needsCpf: true, planName: plan.name, amount: plan.price, cpfCnpj: '', name: ''});
+  };
+
+  const handlePixSubmit = async () => {
+    if (!pixModal.cpfCnpj || pixModal.cpfCnpj.replace(/\D/g, '').length < 11) {
+      return;
+    }
     setChecking(true);
     try {
       const response = await fetch('/api/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          planId: plan.id,
-          planName: plan.name,
-          amount: Math.round(plan.price * 100),
+          planId: 'paid',
+          planName: pixModal.planName,
+          amount: Math.round((pixModal.amount || 0) * 100),
           email: email || 'pending@register.com',
+          cpfCnpj: pixModal.cpfCnpj.replace(/\D/g, ''),
+          name: pixModal.name || email.split('@')[0],
         }),
       });
       const data = await response.json();
       if (data.success && data.brCode) {
-        setPixModal({open: true, brCode: data.brCode, brCodeBase64: data.brCodeBase64, checkoutId: data.checkoutId, planName: plan.name, amount: plan.price});
+        setPixModal(prev => ({...prev, needsCpf: false, brCode: data.brCode, brCodeBase64: data.brCodeBase64, checkoutId: data.checkoutId}));
       } else {
-        setPixModal({open: true, planName: plan.name, amount: plan.price});
+        setPixModal(prev => ({...prev, needsCpf: false}));
       }
     } catch (_) {
-      setPixModal({open: true, planName: plan.name, amount: plan.price});
+      setPixModal(prev => ({...prev, needsCpf: false}));
     }
     setChecking(false);
   };
@@ -1221,7 +1230,7 @@ function LoginScreen() {
           </div>
         </div>
 
-      {pixModal.open && (
+{pixModal.open && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setPixModal({open: false})}>
           <div className="bg-[#141414] border border-[#2A2A2A] rounded-2xl p-8 max-w-md w-full" onClick={e => e.stopPropagation()}>
             <div className="text-center mb-6">
@@ -1229,7 +1238,33 @@ function LoginScreen() {
               <p className="text-[#C9A84C] text-sm font-bold">{pixModal.planName} — {pixModal.amount && formatCurrency(pixModal.amount)}</p>
             </div>
             <div className="flex flex-col items-center gap-4">
-              {pixModal.brCodeBase64 ? (
+              {pixModal.needsCpf ? (
+                <>
+                  <p className="text-[#888] text-sm text-center">Informe seus dados para gerar o QR Code PIX</p>
+                  <input
+                    type="text"
+                    placeholder="Seu nome completo"
+                    value={pixModal.name || ''}
+                    onChange={(e) => setPixModal(prev => ({...prev, name: e.target.value}))}
+                    className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#C9A84C] transition-all text-white placeholder-[#555]"
+                  />
+                  <input
+                    type="text"
+                    placeholder="CPF (somente números)"
+                    value={pixModal.cpfCnpj || ''}
+                    onChange={(e) => setPixModal(prev => ({...prev, cpfCnpj: e.target.value.replace(/\D/g, '').slice(0, 11)}))}
+                    className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#C9A84C] transition-all text-white placeholder-[#555]"
+                    maxLength={11}
+                  />
+                  <button
+                    onClick={handlePixSubmit}
+                    disabled={checking || (pixModal.cpfCnpj || '').length < 11}
+                    className="w-full bg-[#C9A84C] text-[#0A0A0A] py-3 rounded-xl font-bold hover:bg-[#E8C96A] transition-all disabled:opacity-50"
+                  >
+                    {checking ? 'Gerando PIX...' : 'Gerar QR Code PIX'}
+                  </button>
+                </>
+              ) : pixModal.brCodeBase64 ? (
                 <>
                   <img src={pixModal.brCodeBase64} alt="QR Code PIX" className="w-48 h-48 bg-white p-2 rounded-lg" />
                   <p className="text-[#888] text-sm text-center">Escaneie o QR Code ou copie o código abaixo</p>
@@ -1294,10 +1329,10 @@ function LoginScreen() {
               >
                 Fechar
               </button>
-              </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
         {selectedPlan && selectedPlan.price === 0 && (
           <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setSelectedPlan(null)}>
@@ -2217,7 +2252,7 @@ function PricingView() {
   const [plans, setPlans] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
   const { user } = useAuth();
-  const [pixModal, setPixModal] = React.useState<{open: boolean, brCode?: string, brCodeBase64?: string, checkoutId?: string}>({open: false});
+  const [pixModal, setPixModal] = React.useState<{open: boolean, brCode?: string, brCodeBase64?: string, checkoutId?: string, needsCpf?: boolean, planName?: string, amount?: number, cpfCnpj?: string, name?: string}>({open: false});
   const [checking, setChecking] = React.useState(false);
 
   React.useEffect(() => {
@@ -2237,27 +2272,34 @@ function PricingView() {
       alert('Faça login para assinar um plano!');
       return;
     }
+    if (plan.price === 0) return;
+    setPixModal({open: true, needsCpf: true, planName: plan.name, amount: plan.price, cpfCnpj: '', name: ''});
+  };
 
+  const handlePixSubmit = async () => {
+    if (!pixModal.cpfCnpj || pixModal.cpfCnpj.replace(/\D/g, '').length < 11) return;
     setChecking(true);
     try {
       const response = await fetch('/api/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          planId: plan.id,
-          planName: plan.name,
-          amount: Math.round(plan.price * 100),
-          email: user.email,
+          planId: 'paid',
+          planName: pixModal.planName,
+          amount: Math.round((pixModal.amount || 0) * 100),
+          email: user?.email,
+          cpfCnpj: pixModal.cpfCnpj.replace(/\D/g, ''),
+          name: pixModal.name || user?.email?.split('@')[0],
         }),
       });
       const data = await response.json();
       if (data.success && data.brCode) {
-        setPixModal({open: true, brCode: data.brCode, brCodeBase64: data.brCodeBase64, checkoutId: data.checkoutId});
+        setPixModal(prev => ({...prev, needsCpf: false, brCode: data.brCode, brCodeBase64: data.brCodeBase64, checkoutId: data.checkoutId}));
       } else {
-        setPixModal({open: true});
+        setPixModal(prev => ({...prev, needsCpf: false}));
       }
     } catch (_) {
-      setPixModal({open: true});
+      setPixModal(prev => ({...prev, needsCpf: false}));
     }
     setChecking(false);
   };
@@ -2406,19 +2448,59 @@ function PricingView() {
           <div className="bg-[#141414] border border-[#2A2A2A] rounded-2xl p-8 max-w-md w-full mx-4" onClick={e => e.stopPropagation()}>
             <h3 className="text-xl font-bold text-white mb-4 text-center">Pague com PIX</h3>
             <div className="flex flex-col items-center gap-4">
-              {pixModal.brCodeBase64 && (
-                <img src={pixModal.brCodeBase64} alt="QR Code PIX" className="w-48 h-48 bg-white p-2 rounded-lg" />
+              {pixModal.needsCpf ? (
+                <>
+                  <p className="text-[#888] text-sm text-center">Informe seus dados para gerar o QR Code PIX</p>
+                  <input
+                    type="text"
+                    placeholder="Seu nome completo"
+                    value={pixModal.name || ''}
+                    onChange={(e) => setPixModal(prev => ({...prev, name: e.target.value}))}
+                    className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#C9A84C] transition-all text-white placeholder-[#555]"
+                  />
+                  <input
+                    type="text"
+                    placeholder="CPF (somente números)"
+                    value={pixModal.cpfCnpj || ''}
+                    onChange={(e) => setPixModal(prev => ({...prev, cpfCnpj: e.target.value.replace(/\D/g, '').slice(0, 11)}))}
+                    className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#C9A84C] transition-all text-white placeholder-[#555]"
+                    maxLength={11}
+                  />
+                  <button
+                    onClick={handlePixSubmit}
+                    disabled={checking || (pixModal.cpfCnpj || '').length < 11}
+                    className="w-full bg-[#C9A84C] text-[#0A0A0A] py-3 rounded-xl font-bold hover:bg-[#E8C96A] transition-all disabled:opacity-50"
+                  >
+                    {checking ? 'Gerando PIX...' : 'Gerar QR Code PIX'}
+                  </button>
+                </>
+              ) : pixModal.brCodeBase64 ? (
+                <>
+                  <img src={pixModal.brCodeBase64} alt="QR Code PIX" className="w-48 h-48 bg-white p-2 rounded-lg" />
+                  <p className="text-[#888] text-sm text-center">Escaneie o QR Code ou copie o código abaixo</p>
+                  <div className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg p-3">
+                    <code className="text-[#C9A84C] text-xs break-all">{pixModal.brCode}</code>
+                  </div>
+                  <button
+                    onClick={() => navigator.clipboard.writeText(pixModal.brCode || '')}
+                    className="bg-[#1A1A1A] border border-[#2A2A2A] text-white px-4 py-2 rounded-lg text-sm hover:bg-[#222] transition-all w-full"
+                  >
+                    Copiar Código PIX
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="text-[#888] text-sm text-center">Erro ao gerar PIX. Tente pelo WhatsApp.</p>
+                  <a
+                    href={`https://wa.me/5562982093065?text=Olá! Quero assinar o plano ${pixModal.planName}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full bg-[#25D366] text-white py-3 rounded-xl font-bold text-sm hover:bg-[#20c05c] transition-all flex items-center justify-center gap-2"
+                  >
+                    Pagar via WhatsApp
+                  </a>
+                </>
               )}
-              <p className="text-[#888] text-sm text-center">Escaneie o QR Code ou copie o código abaixo</p>
-              <div className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg p-3">
-                <code className="text-[#C9A84C] text-xs break-all">{pixModal.brCode}</code>
-              </div>
-              <button
-                onClick={() => navigator.clipboard.writeText(pixModal.brCode || '')}
-                className="bg-[#1A1A1A] border border-[#2A2A2A] text-white px-4 py-2 rounded-lg text-sm hover:bg-[#222] transition-all"
-              >
-                Copiar Código PIX
-              </button>
               <button
                 onClick={() => setPixModal({open: false})}
                 className="text-[#888] text-sm hover:text-white transition-all"
