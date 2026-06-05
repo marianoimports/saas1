@@ -73,11 +73,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ success: false, error: 'Asaas payment create failed', details: paymentData });
     }
 
+  await new Promise((r) => setTimeout(r, 2000));
+
+  let qrData: any = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
     const qrRes = await fetch(`${ASAAS_API_URL}/payments/${paymentData.id}/pixQrCode`, { headers, signal: AbortSignal.timeout(10000) });
-    const qrData: any = await qrRes.json();
-    if (!qrData.payload) {
-      return res.status(200).json({ success: false, error: 'PIX QR code failed', details: qrData });
-    }
+    qrData = await qrRes.json();
+    if (qrData.payload) break;
+    if (attempt < 2) await new Promise((r) => setTimeout(r, 2000));
+  }
+
+  if (!qrData || !qrData.payload) {
+    return res.status(200).json({ success: false, error: 'PIX QR code failed', details: qrData });
+  }
 
     return res.status(200).json({
       success: true,
