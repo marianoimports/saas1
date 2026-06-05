@@ -40,7 +40,6 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 import { chatWithAI } from './services/huggingfaceService';
-import { createPixCheckout } from './services/asaasService';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { getDocs, collection } from 'firebase/firestore';
 import { db } from './firebase';
@@ -1019,18 +1018,26 @@ function LoginScreen() {
       return;
     }
     setChecking(true);
-    setPixModal({open: true, planName: plan.name, amount: plan.price});
     try {
-      const data = await createPixCheckout({
-        planId: plan.id,
-        planName: plan.name,
-        amount: Math.round(plan.price * 100),
-        email: email || 'pending@register.com',
+      const response = await fetch('/api/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          planId: plan.id,
+          planName: plan.name,
+          amount: Math.round(plan.price * 100),
+          email: email || 'pending@register.com',
+        }),
       });
+      const data = await response.json();
       if (data.success && data.brCode) {
         setPixModal({open: true, brCode: data.brCode, brCodeBase64: data.brCodeBase64, checkoutId: data.checkoutId, planName: plan.name, amount: plan.price});
+      } else {
+        setPixModal({open: true, planName: plan.name, amount: plan.price});
       }
-    } catch (_) { /* fallback WhatsApp already shown */ }
+    } catch (_) {
+      setPixModal({open: true, planName: plan.name, amount: plan.price});
+    }
     setChecking(false);
   };
 
@@ -2232,18 +2239,26 @@ function PricingView() {
     }
 
     setChecking(true);
-    setPixModal({open: true});
     try {
-      const data = await createPixCheckout({
-        planId: plan.id,
-        planName: plan.name,
-        amount: Math.round(plan.price * 100),
-        email: user.email,
+      const response = await fetch('/api/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          planId: plan.id,
+          planName: plan.name,
+          amount: Math.round(plan.price * 100),
+          email: user.email,
+        }),
       });
+      const data = await response.json();
       if (data.success && data.brCode) {
         setPixModal({open: true, brCode: data.brCode, brCodeBase64: data.brCodeBase64, checkoutId: data.checkoutId});
+      } else {
+        setPixModal({open: true});
       }
-    } catch (_) { /* fallback WhatsApp already shown */ }
+    } catch (_) {
+      setPixModal({open: true});
+    }
     setChecking(false);
   };
 
