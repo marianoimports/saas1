@@ -40,6 +40,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 import { chatWithAI } from './services/huggingfaceService';
+import { createPixCheckout } from './services/asaasService';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { getDocs, collection } from 'firebase/firestore';
 import { db } from './firebase';
@@ -1017,23 +1018,15 @@ function LoginScreen() {
       setSelectedPlan(plan);
       return;
     }
+    setChecking(true);
     setPixModal({open: true, planName: plan.name, amount: plan.price});
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
-      const response = await fetch('/api/create-checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          planId: plan.id,
-          planName: plan.name,
-          amount: Math.round(plan.price * 100),
-          email: email || 'pending@register.com',
-        }),
-        signal: controller.signal,
+      const data = await createPixCheckout({
+        planId: plan.id,
+        planName: plan.name,
+        amount: Math.round(plan.price * 100),
+        email: email || 'pending@register.com',
       });
-      clearTimeout(timeoutId);
-      const data = await response.json();
       if (data.success && data.brCode) {
         setPixModal({open: true, brCode: data.brCode, brCodeBase64: data.brCodeBase64, checkoutId: data.checkoutId, planName: plan.name, amount: plan.price});
       }
@@ -2238,24 +2231,15 @@ function PricingView() {
       return;
     }
 
+    setChecking(true);
     setPixModal({open: true});
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
-      const response = await fetch('/api/create-checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          planId: plan.id,
-          planName: plan.name,
-          amount: Math.round(plan.price * 100),
-          email: user.email,
-        }),
-        signal: controller.signal,
+      const data = await createPixCheckout({
+        planId: plan.id,
+        planName: plan.name,
+        amount: Math.round(plan.price * 100),
+        email: user.email,
       });
-      clearTimeout(timeoutId);
-
-      const data = await response.json();
       if (data.success && data.brCode) {
         setPixModal({open: true, brCode: data.brCode, brCodeBase64: data.brCodeBase64, checkoutId: data.checkoutId});
       }
