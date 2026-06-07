@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-const ASAAS_API_URL = 'https://api.asaas.com/v3';
+const SUPABASE_URL = 'https://ejdsuslapvzsseqotvhp.supabase.co';
+const SUPABASE_KEY = process.env.SUPABASE_SVC_KEY || '';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
@@ -11,32 +12,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!paymentId || typeof paymentId !== 'string') {
     return res.status(400).json({ error: 'Missing paymentId' });
   }
-
-  const apiKey = process.env.ASAAS_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: 'ASAAS_API_KEY not configured' });
+  if (!SUPABASE_KEY) {
+    return res.status(500).json({ error: 'SUPABASE_SERVICE_KEY not configured' });
   }
 
   try {
-    const paymentRes = await fetch(`${ASAAS_API_URL}/payments/${paymentId}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        'access_token': apiKey,
-      },
-      signal: AbortSignal.timeout(8000),
-    });
-    const paymentData: any = await paymentRes.json();
+    const sbHeaders: Record<string, string> = {
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+    };
 
-    if (!paymentData.id) {
+    const result = await fetch(
+      `${SUPABASE_URL}/rest/v1/payments?charge_id=eq.${paymentId}&select=status,plan_name&limit=1`,
+      { headers: sbHeaders, signal: AbortSignal.timeout(8000) },
+    );
+    const data: any[] = await result.json();
+
+    if (!data || data.length === 0) {
       return res.status(200).json({ status: 'unknown' });
     }
 
-    const isConfirmed = paymentData.status === 'RECEIVED' || paymentData.status === 'CONFIRMED';
-
+    const payment = data[0];
     return res.status(200).json({
-      status: isConfirmed ? 'confirmed' : paymentData.status?.toLowerCase() || 'pending',
-      plan: paymentData.description || '',
-      value: paymentData.value || 0,
+      status: payment.status || 'pending',
+      plan: payment.plan_name || '',
     });
   } catch (error: any) {
     return res.status(200).json({ status: 'unknown', error: error.message });
