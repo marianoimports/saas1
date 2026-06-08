@@ -1,83 +1,104 @@
-import { 
-  collection, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc, 
-  query, 
-  where, 
-  onSnapshot,
-  orderBy,
-  serverTimestamp,
-  getDocs,
-  getDoc,
-  setDoc,
-  limit
-} from 'firebase/firestore';
-import { db } from '../firebase';
+import { supabase } from '../supabase';
 
-export const getCollectionRef = (path: string) => collection(db, path);
+export const getCollectionRef = (_path: string) => {
+  return null;
+};
 
-// Generic function to subscribe to a collection
 export function subscribeToCollection<T>(
-  path: string, 
+  path: string,
   callback: (data: T[]) => void,
   shopId: string
 ) {
-  // Clean and validate shopId
   const cleanShopId = String(shopId).replace(/[^a-zA-Z0-9-_]/g, '');
   if (!cleanShopId || cleanShopId === 'undefined' || cleanShopId !== shopId) {
     console.error('subscribeToCollection: shopId is invalid:', shopId, 'cleaned:', cleanShopId);
     callback([]);
     return () => {};
   }
-  const q = query(
-    collection(db, `shops/${cleanShopId}/${path}`),
-    orderBy('createdAt', 'desc')
-  );
 
-  return onSnapshot(q, (snapshot) => {
-    const items = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    } as T & { id: string }));
-    callback(items);
-  }, (error) => {
-    console.error(`Error subscribing to ${path}:`, error);
-  });
+  let cancelled = false;
+  let intervalId: ReturnType<typeof setInterval>;
+
+  const tableName = getTableName(path);
+
+  const fetchData = async () => {
+    if (cancelled) return;
+    try {
+      const { data, error } = await supabase
+        .from(tableName)
+        .select('*')
+        .eq('shop_id', cleanShopId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error(`Error subscribing to ${path}:`, error);
+        return;
+      }
+
+      if (!cancelled) {
+        const items = (data || []).map(item => ({
+          id: item.id,
+          ...item,
+        })) as (T & { id: string })[];
+        callback(items);
+      }
+    } catch (error) {
+      console.error(`Error subscribing to ${path}:`, error);
+    }
+  };
+
+  fetchData();
+  intervalId = setInterval(fetchData, 5000);
+
+  return () => {
+    cancelled = true;
+    clearInterval(intervalId);
+  };
 }
 
-// Add Item
 export async function addItem(shopId: string, path: string, data: any) {
   if (!shopId || shopId === 'undefined' || shopId === undefined) {
     throw new Error('addItem: shopId is invalid');
   }
   try {
-    const docRef = await addDoc(collection(db, `shops/${shopId}/${path}`), {
-      ...data,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    });
-    return docRef.id;
+    const tableName = getTableName(path);
+    const { data: result, error } = await supabase
+      .from(tableName)
+      .insert({
+        ...data,
+        shop_id: shopId,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .select('id')
+      .single();
+
+    if (error) throw error;
+    return result.id;
   } catch (error) {
-    console.error("Error adding document: ", error);
+    console.error('Error adding document: ', error);
     throw error;
   }
 }
 
-// Update Item
 export async function updateItem(shopId: string, path: string, id: string, data: any) {
   if (!shopId || shopId === 'undefined' || shopId === undefined) {
     throw new Error('updateItem: shopId is invalid');
   }
   try {
-    const docRef = doc(db, `shops/${shopId}/${path}`, id);
-    await updateDoc(docRef, {
-      ...data,
-      updatedAt: serverTimestamp()
-    });
+    const tableName = getTableName(path);
+    const { error } = await supabase
+      .from(tableName)
+      .update({
+        ...data,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .eq('shop_id', shopId);
+
+    if (error) throw error;
   } catch (error) {
-    console.error("Error updating document: ", error);
+    console.error('Error updating document: ', error);
     throw error;
   }
 }
@@ -85,27 +106,37 @@ export async function updateItem(shopId: string, path: string, id: string, data:
 // ==================== SHOPS ====================
 export async function addShop(data: any) {
   try {
-    const docRef = await addDoc(collection(db, 'shops'), {
-      ...data,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    });
-    return docRef.id;
+    const { data: result, error } = await supabase
+      .from('shops')
+      .insert({
+        ...data,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .select('id')
+      .single();
+
+    if (error) throw error;
+    return result.id;
   } catch (error) {
-    console.error("Error adding shop: ", error);
+    console.error('Error adding shop: ', error);
     throw error;
   }
 }
 
 export async function updateShop(shopId: string, data: any) {
   try {
-    const docRef = doc(db, 'shops', shopId);
-    await updateDoc(docRef, {
-      ...data,
-      updatedAt: serverTimestamp()
-    });
+    const { error } = await supabase
+      .from('shops')
+      .update({
+        ...data,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', shopId);
+
+    if (error) throw error;
   } catch (error) {
-    console.error("Error updating shop: ", error);
+    console.error('Error updating shop: ', error);
     throw error;
   }
 }
@@ -113,39 +144,67 @@ export async function updateShop(shopId: string, data: any) {
 export function subscribeToShops<T>(
   callback: (data: T[]) => void
 ) {
-  const q = query(
-    collection(db, 'shops'),
-    orderBy('createdAt', 'desc')
-  );
+  let cancelled = false;
+  let intervalId: ReturnType<typeof setInterval>;
 
-  return onSnapshot(q, (snapshot) => {
-    const items = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    } as T & { id: string }));
-    callback(items);
-  }, (error) => {
-    console.error(`Error subscribing to shops:`, error);
-  });
+  const fetchData = async () => {
+    if (cancelled) return;
+    try {
+      const { data, error } = await supabase
+        .from('shops')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error subscribing to shops:', error);
+        return;
+      }
+      if (!cancelled) {
+        const items = (data || []).map(item => ({
+          id: item.id,
+          ...item,
+        })) as (T & { id: string })[];
+        callback(items);
+      }
+    } catch (error) {
+      console.error('Error subscribing to shops:', error);
+    }
+  };
+
+  fetchData();
+  intervalId = setInterval(fetchData, 5000);
+
+  return () => {
+    cancelled = true;
+    clearInterval(intervalId);
+  };
 }
 
 export async function getShopsCount(): Promise<number> {
   try {
-    const snapshot = await getDocs(collection(db, 'shops'));
-    return snapshot.size;
+    const { count, error } = await supabase
+      .from('shops')
+      .select('*', { count: 'exact', head: true });
+
+    if (error) throw error;
+    return count || 0;
   } catch (error) {
-    console.error("Error getting shops count: ", error);
+    console.error('Error getting shops count: ', error);
     return 0;
   }
 }
 
 export async function getActiveShopsCount(): Promise<number> {
   try {
-    const q = query(collection(db, 'shops'), where('status', '==', 'active'));
-    const snapshot = await getDocs(q);
-    return snapshot.size;
+    const { count, error } = await supabase
+      .from('shops')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'active');
+
+    if (error) throw error;
+    return count || 0;
   } catch (error) {
-    console.error("Error getting active shops count: ", error);
+    console.error('Error getting active shops count: ', error);
     return 0;
   }
 }
@@ -153,27 +212,37 @@ export async function getActiveShopsCount(): Promise<number> {
 // ==================== PLANS ====================
 export async function addPlan(data: any) {
   try {
-    const docRef = await addDoc(collection(db, 'plans'), {
-      ...data,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    });
-    return docRef.id;
+    const { data: result, error } = await supabase
+      .from('plans')
+      .insert({
+        ...data,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .select('id')
+      .single();
+
+    if (error) throw error;
+    return result.id;
   } catch (error) {
-    console.error("Error adding plan: ", error);
+    console.error('Error adding plan: ', error);
     throw error;
   }
 }
 
 export async function updatePlan(planId: string, data: any) {
   try {
-    const docRef = doc(db, 'plans', planId);
-    await updateDoc(docRef, {
-      ...data,
-      updatedAt: serverTimestamp()
-    });
+    const { error } = await supabase
+      .from('plans')
+      .update({
+        ...data,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', planId);
+
+    if (error) throw error;
   } catch (error) {
-    console.error("Error updating plan: ", error);
+    console.error('Error updating plan: ', error);
     throw error;
   }
 }
@@ -181,32 +250,55 @@ export async function updatePlan(planId: string, data: any) {
 export function subscribeToPlans<T>(
   callback: (data: T[]) => void
 ) {
-  const q = query(
-    collection(db, 'plans'),
-    orderBy('price', 'asc')
-  );
+  let cancelled = false;
+  let intervalId: ReturnType<typeof setInterval>;
 
-  return onSnapshot(q, (snapshot) => {
-    const items = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    } as T & { id: string }));
-    callback(items);
-  }, (error) => {
-    console.error(`Error subscribing to plans:`, error);
-  });
+  const fetchData = async () => {
+    if (cancelled) return;
+    try {
+      const { data, error } = await supabase
+        .from('plans')
+        .select('*')
+        .order('price', { ascending: true });
+
+      if (error) {
+        console.error('Error subscribing to plans:', error);
+        return;
+      }
+      if (!cancelled) {
+        const items = (data || []).map(item => ({
+          id: item.id,
+          ...item,
+        })) as (T & { id: string })[];
+        callback(items);
+      }
+    } catch (error) {
+      console.error('Error subscribing to plans:', error);
+    }
+  };
+
+  fetchData();
+  intervalId = setInterval(fetchData, 5000);
+
+  return () => {
+    cancelled = true;
+    clearInterval(intervalId);
+  };
 }
 
 export async function getPlanById(planId: string): Promise<any> {
   try {
-    const docRef = doc(db, 'plans', planId);
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-      return { id: docSnap.id, ...docSnap.data() };
-    }
+    const { data, error } = await supabase
+      .from('plans')
+      .select('*')
+      .eq('id', planId)
+      .single();
+
+    if (error) throw error;
+    if (data) return { id: data.id, ...data };
     return null;
   } catch (error) {
-    console.error("Error getting plan: ", error);
+    console.error('Error getting plan: ', error);
     return null;
   }
 }
@@ -214,10 +306,14 @@ export async function getPlanById(planId: string): Promise<any> {
 // ==================== STATS ====================
 export async function getTotalUsersCount(): Promise<number> {
   try {
-    const snapshot = await getDocs(collection(db, 'users'));
-    return snapshot.size;
+    const { count, error } = await supabase
+      .from('users')
+      .select('*', { count: 'exact', head: true });
+
+    if (error) throw error;
+    return count || 0;
   } catch (error) {
-    console.error("Error getting users count: ", error);
+    console.error('Error getting users count: ', error);
     return 0;
   }
 }
@@ -225,48 +321,53 @@ export async function getTotalUsersCount(): Promise<number> {
 // ==================== ADMIN MANAGEMENT ====================
 export async function setUserAsAdmin(userId: string) {
   try {
-    const userRef = doc(db, 'users', userId);
-    await updateDoc(userRef, {
-      role: 'admin',
-      isAdmin: true,
-      updatedAt: serverTimestamp()
-    });
+    const { error } = await supabase
+      .from('users')
+      .update({
+        role: 'admin',
+        is_admin: true,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', userId);
+
+    if (error) throw error;
   } catch (error) {
-    console.error("Error setting user as admin: ", error);
+    console.error('Error setting user as admin: ', error);
     throw error;
   }
 }
 
 export async function checkIfAdminExists(): Promise<boolean> {
   try {
-    const q = query(
-      collection(db, 'users'),
-      where('role', '==', 'admin')
-    );
-    const snapshot = await getDocs(q);
-    return !snapshot.empty;
+    const { data, error } = await supabase
+      .from('users')
+      .select('id')
+      .eq('role', 'admin')
+      .limit(1);
+
+    if (error) throw error;
+    return (data || []).length > 0;
   } catch (error) {
-    console.error("Error checking admin existence: ", error);
+    console.error('Error checking admin existence: ', error);
     return false;
   }
 }
 
 export async function getMRR(): Promise<number> {
   try {
-    const q = query(
-      collection(db, 'shops'),
-      where('status', '==', 'active')
-    );
-    const snapshot = await getDocs(q);
+    const { data, error } = await supabase
+      .from('shops')
+      .select('monthly_revenue')
+      .eq('status', 'active');
+
+    if (error) throw error;
     let mrr = 0;
-    snapshot.forEach(doc => {
-      const shop = doc.data();
-      // Sum up monthly revenue from active shops
-      mrr += shop.monthlyRevenue || 0;
+    (data || []).forEach(shop => {
+      mrr += shop.monthly_revenue || 0;
     });
     return mrr;
   } catch (error) {
-    console.error("Error calculating MRR: ", error);
+    console.error('Error calculating MRR: ', error);
     return 0;
   }
 }
@@ -275,15 +376,16 @@ export async function getNewShopsLast30Days(): Promise<number> {
   try {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    
-    const q = query(
-      collection(db, 'shops'),
-      where('createdAt', '>=', thirtyDaysAgo)
-    );
-    const snapshot = await getDocs(q);
-    return snapshot.size;
+
+    const { count, error } = await supabase
+      .from('shops')
+      .select('*', { count: 'exact', head: true })
+      .gte('created_at', thirtyDaysAgo.toISOString());
+
+    if (error) throw error;
+    return count || 0;
   } catch (error) {
-    console.error("Error getting new shops: ", error);
+    console.error('Error getting new shops: ', error);
     return 0;
   }
 }
@@ -291,24 +393,25 @@ export async function getNewShopsLast30Days(): Promise<number> {
 // ==================== USER MANAGEMENT ====================
 export async function deleteUser(userId: string) {
   try {
-    // Delete user document from Firestore
-    await deleteDoc(doc(db, 'users', userId));
-    // Note: To delete from Firebase Auth, you need a Cloud Function
-    console.log('User document deleted. Auth deletion requires Cloud Function.');
+    const { error } = await supabase
+      .from('users')
+      .delete()
+      .eq('id', userId);
+
+    if (error) throw error;
+    console.log('User document deleted. Auth deletion requires admin API.');
   } catch (error) {
-    console.error("Error deleting user: ", error);
+    console.error('Error deleting user: ', error);
     throw error;
   }
 }
 
 export async function sendPasswordResetEmail(email: string) {
   try {
-    // Import Firebase Auth dynamically to avoid circular deps
-    const { sendPasswordResetEmail: firebaseSendReset } = await import('firebase/auth');
-    const { auth } = await import('../firebase');
-    await firebaseSendReset(auth, email);
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    if (error) throw error;
   } catch (error) {
-    console.error("Error sending password reset: ", error);
+    console.error('Error sending password reset: ', error);
     throw error;
   }
 }
@@ -328,26 +431,34 @@ export interface StripeConfig {
 
 export async function getStripeConfig(): Promise<StripeConfig | null> {
   try {
-    const docRef = doc(db, 'settings', 'stripe');
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-      return docSnap.data() as StripeConfig;
-    }
+    const { data, error } = await supabase
+      .from('settings')
+      .select('data')
+      .eq('id', 'stripe')
+      .single();
+
+    if (error) throw error;
+    if (data) return data.data as StripeConfig;
     return null;
   } catch (error) {
-    console.error("Error getting Stripe config: ", error);
+    console.error('Error getting Stripe config: ', error);
     return null;
   }
 }
 
 export async function saveStripeConfig(config: Partial<StripeConfig>) {
   try {
-    await setDoc(doc(db, 'settings', 'stripe'), {
-      ...config,
-      updatedAt: serverTimestamp()
-    }, { merge: true });
+    const { error } = await supabase
+      .from('settings')
+      .upsert({
+        id: 'stripe',
+        data: config,
+        updated_at: new Date().toISOString(),
+      });
+
+    if (error) throw error;
   } catch (error) {
-    console.error("Error saving Stripe config: ", error);
+    console.error('Error saving Stripe config: ', error);
     throw error;
   }
 }
@@ -357,47 +468,79 @@ export function subscribeToAppointments<T>(
   shopId: string,
   callback: (data: T[]) => void
 ) {
-  const q = query(
-    collection(db, `shops/${shopId}/appointments`),
-    orderBy('date', 'asc'),
-    orderBy('time', 'asc')
-  );
-  
-  return onSnapshot(q, (snapshot) => {
-    const items = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    } as T & { id: string }));
-    callback(items);
-  }, (error) => {
-    console.error(`Error subscribing to appointments:`, error);
-  });
+  let cancelled = false;
+  let intervalId: ReturnType<typeof setInterval>;
+
+  const fetchData = async () => {
+    if (cancelled) return;
+    try {
+      const { data, error } = await supabase
+        .from('appointments')
+        .select('*')
+        .eq('shop_id', shopId)
+        .order('date', { ascending: true });
+
+      if (error) {
+        console.error('Error subscribing to appointments:', error);
+        return;
+      }
+      if (!cancelled) {
+        const items = (data || []).map(item => ({
+          id: item.id,
+          ...item,
+        })) as (T & { id: string })[];
+        callback(items);
+      }
+    } catch (error) {
+      console.error('Error subscribing to appointments:', error);
+    }
+  };
+
+  fetchData();
+  intervalId = setInterval(fetchData, 5000);
+
+  return () => {
+    cancelled = true;
+    clearInterval(intervalId);
+  };
 }
 
 export async function addAppointment(shopId: string, data: any) {
   try {
-    const docRef = await addDoc(collection(db, `shops/${shopId}/appointments`), {
-      ...data,
-      status: 'pending',
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    });
-    return docRef.id;
+    const { data: result, error } = await supabase
+      .from('appointments')
+      .insert({
+        ...data,
+        shop_id: shopId,
+        status: 'pending',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .select('id')
+      .single();
+
+    if (error) throw error;
+    return result.id;
   } catch (error) {
-    console.error("Error adding appointment: ", error);
+    console.error('Error adding appointment: ', error);
     throw error;
   }
 }
 
 export async function updateAppointment(shopId: string, appointmentId: string, data: any) {
   try {
-    const docRef = doc(db, `shops/${shopId}/appointments`, appointmentId);
-    await updateDoc(docRef, {
-      ...data,
-      updatedAt: serverTimestamp()
-    });
+    const { error } = await supabase
+      .from('appointments')
+      .update({
+        ...data,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', appointmentId)
+      .eq('shop_id', shopId);
+
+    if (error) throw error;
   } catch (error) {
-    console.error("Error updating appointment: ", error);
+    console.error('Error updating appointment: ', error);
     throw error;
   }
 }
@@ -406,44 +549,59 @@ export async function updateAppointment(shopId: string, appointmentId: string, d
 export function subscribeToUsers<T>(
   callback: (data: T[]) => void
 ) {
-  const q = query(
-    collection(db, 'users'),
-    orderBy('createdAt', 'desc')
-  );
+  let cancelled = false;
+  let intervalId: ReturnType<typeof setInterval>;
 
-  return onSnapshot(q, (snapshot) => {
-    const items = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    } as T & { id: string }));
-    callback(items);
-  }, (error) => {
-    console.error(`Error subscribing to users:`, error);
-  });
+  const fetchData = async () => {
+    if (cancelled) return;
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error subscribing to users:', error);
+        return;
+      }
+      if (!cancelled) {
+        const items = (data || []).map(item => ({
+          id: item.id,
+          ...item,
+        })) as (T & { id: string })[];
+        callback(items);
+      }
+    } catch (error) {
+      console.error('Error subscribing to users:', error);
+    }
+  };
+
+  fetchData();
+  intervalId = setInterval(fetchData, 5000);
+
+  return () => {
+    cancelled = true;
+    clearInterval(intervalId);
+  };
 }
 
 export async function createStripeCheckout(planId: string, userId: string, userEmail: string) {
   try {
-    // In production, this would call a Firebase Cloud Function
-    // that creates a Stripe Checkout Session
     const config = await getStripeConfig();
     if (!config?.enabled) {
       throw new Error('Stripe not configured');
     }
 
-    const plan = await getDoc(doc(db, 'plans', planId));
-    if (!plan.exists()) {
+    const plan = await getPlanById(planId);
+    if (!plan) {
       throw new Error('Plan not found');
     }
 
-    const planData = plan.data();
     const priceId = config.plans?.[planId]?.priceId;
-
     if (!priceId) {
       throw new Error('Stripe price ID not configured for this plan');
     }
 
-    // Simulate API call to Cloud Function
     const response = await fetch('/api/create-checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -451,15 +609,33 @@ export async function createStripeCheckout(planId: string, userId: string, userE
         priceId,
         userId,
         userEmail,
-        planName: planData.name,
+        planName: plan.name,
         successUrl: `${window.location.origin}/dashboard?success=true`,
-        cancelUrl: `${window.location.origin}/pricing?canceled=true`
-      })
+        cancelUrl: `${window.location.origin}/pricing?canceled=true`,
+      }),
     });
 
     return await response.json();
   } catch (error) {
-    console.error("Error creating checkout: ", error);
+    console.error('Error creating checkout: ', error);
     throw error;
   }
+}
+
+// ==================== HELPER ====================
+function getTableName(firestorePath: string): string {
+  const parts = firestorePath.split('/');
+  const collectionName = parts[parts.length - 1];
+
+  const mapping: Record<string, string> = {
+    barbers: 'barbers',
+    services: 'inventory',
+    inventory: 'inventory',
+    appointments: 'appointments',
+    users: 'users',
+    professionals: 'professionals',
+    products: 'inventory',
+  };
+
+  return mapping[collectionName] || collectionName;
 }

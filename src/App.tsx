@@ -41,8 +41,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 import { chatWithAI } from './services/huggingfaceService';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { getDocs, collection } from 'firebase/firestore';
-import { db } from './firebase';
+import { supabase } from './supabase';
 import {
   subscribeToShops,
   subscribeToPlans,
@@ -116,26 +115,26 @@ function MainApp() {
         setShopIdLoading(false);
         return;
       }
-      
+
       try {
-        const { doc, getDocFromServer } = await import('firebase/firestore');
-        const { db } = await import('./firebase');
-        const userRef = doc(db, 'users', user.uid);
-        const snapshot = await getDocFromServer(userRef);
-        
-        if (snapshot.exists()) {
-          const data = snapshot.data();
-          if (!data.shopId) {
-            // Create shopId if missing
-            console.log('Adding shopId to user document:', user.uid);
-            const { setDoc, serverTimestamp } = await import('firebase/firestore');
-            await setDoc(userRef, { shopId: user.uid, updatedAt: serverTimestamp() }, { merge: true });
+        const { data, error } = await supabase
+          .from('users')
+          .select('shop_id')
+          .eq('uid', user.uid)
+          .single();
+
+        if (error || !data) {
+          const { createUserDocument } = await import('./contexts/AuthContext');
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            await createUserDocument(session.user);
           }
-        } else {
-          // Create user document if doesn't exist
-          console.log('Creating user document with shopId:', user.uid);
-          const { createUserDocument } = await import('./firebase');
-          await createUserDocument(user);
+        } else if (!data.shop_id) {
+          await supabase
+            .from('users')
+            .update({ shop_id: user.uid, updated_at: new Date().toISOString() })
+            .eq('uid', user.uid);
+          console.log('Adding shopId to user document:', user.uid);
         }
       } catch (error) {
         console.error('Error setting up shopId:', error);
@@ -143,7 +142,7 @@ function MainApp() {
         setShopIdLoading(false);
       }
     };
-    
+
     setupShopId();
   }, [user]);
 
@@ -373,32 +372,29 @@ function AdminLayout({ user, logout, activeTab, setActiveTab }: any) {
       setUsers(data);
     });
 
-    // Also fetch users from all shops (barbers/clients)
-    const fetchAllShopUsers = async () => {
-      try {
-        const shopsSnapshot = await getDocs(collection(db, 'shops'));
-        const allShopUsers: any[] = [];
-        
-        for (const shopDoc of shopsSnapshot.docs) {
-          const shopId = shopDoc.id;
-          const usersSnapshot = await getDocs(collection(db, `shops/${shopId}/users`));
-          usersSnapshot.forEach(doc => {
-            allShopUsers.push({
-              id: doc.id,
-              ...doc.data(),
-              shopId,
-              source: 'shop'
-            });
-          });
-        }
-        
-        setAllUsers(allShopUsers);
-        setLoading(false);
-      } catch (error) {
-        console.error('Error fetching shop users:', error);
-        setLoading(false);
-      }
-    };
+  // Also fetch users from all shops (barbers/clients)
+  const fetchAllShopUsers = async () => {
+    try {
+      const { data: barbers, error } = await supabase
+        .from('barbers')
+        .select('*, shop_id');
+
+      if (error) throw error;
+
+      const allShopUsers = (barbers || []).map((b: any) => ({
+        id: b.id,
+        ...b,
+        shopId: b.shop_id,
+        source: 'shop',
+      }));
+
+      setAllUsers(allShopUsers);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching shop users:', error);
+      setLoading(false);
+    }
+  };
 
     fetchAllShopUsers();
 
